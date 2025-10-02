@@ -1,7 +1,7 @@
 import streamlit as st
-from crew import diabetes_agent
+
 import pickle
-from crewai import Crew, Task
+
 
 
 st.set_page_config(page_title="Diabetes Risk Prediction ", page_icon="🩺",layout='centered')
@@ -46,27 +46,5 @@ if submit:
     response1=model.predict(user)
     st.subheader("🔎 Diabetes Assistant Response")
     st.subheader("🚨⚠️ **High Risk of Diabetes Predicted** 😟" if response1[0] == 1 else "✅🟢 **No Diabetes Predicted** 😃🎉")
-    
-    # Create a task for the agent
-    task = Task(
-        description=f"""Analyze this patient's health data using AI and machine learning: {user_data}. 
-        
-        First use the diabetes prediction tool to get the risk assessment. Then provide:
-        1. Clear explanation of the diabetes risk prediction
-        2. Personalized health recommendations based on their specific data
-        3. Lifestyle advice and prevention strategies
-        4. Follow-up recommendations
-        
-        Format the response in a patient-friendly way and mention that this analysis was powered by CrewAI technology.""",
-        expected_output="A comprehensive patient report with AI-powered diabetes risk assessment and personalized health recommendations",
-        agent=diabetes_agent
-    )
-    
-    # Create a crew and execute the task
-    crew = Crew(
-        agents=[diabetes_agent],
-        tasks=[task],
-        verbose=False  # Reduce verbose output to avoid JSON clutter
-    )
     
     
