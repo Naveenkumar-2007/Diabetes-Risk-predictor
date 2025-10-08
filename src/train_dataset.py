@@ -12,7 +12,7 @@ from sklearn.utils import shuffle
 
 
 
-df = pd.read_csv("C:\\Users\\navee\\Downloads\\archive (2)\\diabetes.csv")
+df = pd.read_csv("C:\\Users\\navee\\Downloads\\archive\\diabetes.csv")
 
 cols_with_zeros = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
 df[cols_with_zeros] = df[cols_with_zeros].replace(0, np.nan)

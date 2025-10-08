@@ -1,9 +1,22 @@
 numpy==2.3.3
 pandas==2.3.2
-scikit-learn==1.6.0
+scikit-learn==1.7.2
 crewai==0.193.2
+crewai-tools==0.75.0
 streamlit==1.50.0
 pydantic==2.11.9
 pydantic-settings==2.11.0
 python-dotenv==1.1.1
-gunicorn==23.0.0
+openai>=1.68.2
+# Pin urllib3 to <2 to preserve urllib3.contrib.appengine for some dependencies
+urllib3<2
+numpy==2.3.3
+pandas==2.3.2
+scikit-learn==1.7.2
+crewai==0.193.2
+crewai-tools==0.75.0
+streamlit==1.50.0
+pydantic==2.11.9
+pydantic-settings==2.11.0
+python-dotenv==1.1.1
+openai>=1.68.2
