@@ -5,11 +5,11 @@ from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
-
+# ------------------- LOAD MODEL -------------------
 with open("model.pkl", "rb") as f:
     model = pickle.load(f)
 
-
+# ------------------- LOAD ENV & LLM -------------------
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
 
@@ -22,13 +22,13 @@ else:
         temperature=0.4
     )
 
-#  SESSION STATE 
+# ------------------- SESSION STATE -------------------
 if "page" not in st.session_state:
     st.session_state.page = "registration"
 if "patient_info" not in st.session_state:
     st.session_state.patient_info = {}
 
-# OP REGISTRATION
+# ------------------- PAGE 1: OP REGISTRATION -------------------
 if st.session_state.page == "registration":
     st.set_page_config(page_title="🏥 Diabetes OP Registration", layout="centered")
     st.title("Diabetes Hospital OP Registration")
@@ -62,7 +62,7 @@ if st.session_state.page == "registration":
             st.success(f"Patient {patient_name} registered successfully! 🎉")
             st.session_state.page = "prediction"  # move to next page automatically
 
-# Diabetes Prediction & Doctor Report 
+# ------------------- PAGE 2: Diabetes Prediction & Doctor Report -------------------
 elif st.session_state.page == "prediction":
     st.set_page_config(page_title="🏥 Diabetes Prediction & Doctor Report", layout="centered")
     st.title("🩺 Diabetes Prediction & AI Doctor Report")
@@ -92,17 +92,21 @@ elif st.session_state.page == "prediction":
             bmi = st.number_input("BMI", 0.0, 70.0, 25.0)
         with col3:
             dpf = st.number_input("Diabetes Pedigree Function", 0.0, 3.0, 0.5)
+            age = patient_info["Age"]  # already collected in registration
+            st.text_input("Age (auto-filled)", value=age, disabled=True)
         pred_submit = st.form_submit_button("🔍 Predict")
 
     if pred_submit:
-        user_data = [[preg, glucose, bp, skin, insulin, bmi, dpf, patient_info["Age"]]]
+        # Ensure feature order matches model training columns:
+        # [Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI, DiabetesPedigreeFunction, Age]
+        user_data = [[preg, glucose, bp, skin, insulin, bmi, dpf, age]]
         prediction = model.predict(user_data)[0]
 
         st.subheader("📊 Prediction Result:")
-        result_text = "🚨 High Risk of Diabetes Detected 😟 " if prediction == 1 else "😃🎉 Low Risk / No Diabetes Detected "
+        result_text = "🚨 High Risk of Diabetes Detected 😟" if prediction == 1 else "😃🎉 Low Risk / No Diabetes Detected"
         st.markdown(f"### {result_text}")
 
-        #  CREATE DOCTOR REPORT 
+        # ------------------- CREATE DOCTOR REPORT -------------------
         patient_summary = f"""
 Patient Report:
 - Patient ID: {patient_info['Patient ID']}
@@ -121,30 +125,30 @@ Patient Report:
 - Model Prediction: {"Positive (High Risk)" if prediction == 1 else "Negative (Low Risk)"}
 """
 
-        prompt = ChatPromptTemplate.from_template("""
-You are an experienced diabetologist at a hospital.
-Based on the following patient report, write a clear, structured hospital-style diagnosis.
+        full_prompt = f"""
+You are Dr. Ramesh Kumar, a Senior Diabetologist with 25 years of experience.
+Prepare a detailed, structured hospital-style diagnosis report for the following patient.
+
 Include:
-- Patient Overview
-- Risk Assessment
-- Possible Causes
-- Recommended Medical Tests
-- Lifestyle & Diet Advice
-- Follow-up Plan
+1️⃣ Patient Overview  
+2️⃣ Risk Assessment  
+3️⃣ Possible Causes  
+4️⃣ Recommended Medical Tests  
+5️⃣ Lifestyle & Diet Advice  
+6️⃣ Follow-up Plan  
 
 Keep the tone professional, warm, and medically appropriate.
 
-{report}
-""")
+{patient_summary}
+"""
 
-        full_prompt = prompt.format(report=patient_summary)
         response = llm.invoke(full_prompt)
 
         st.divider()
-        st.subheader("🏥 Doctor’s  Report:")
+        st.subheader("🏥 Doctor’s Report (Dr. Ramesh Kumar, Senior Diabetologist):")
         st.markdown(response.content)
 
-        # Option to download report
+        # Option to download report as text
         st.download_button(
             label="📄 Download Doctor Report",
             data=response.content,
