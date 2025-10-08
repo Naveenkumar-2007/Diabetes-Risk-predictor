@@ -38,14 +38,14 @@ if st.session_state.page == "registration":
         with col1:
             patient_id = st.text_input("Patient ID", "")
             patient_name = st.text_input("Patient Name", "")
-            sex = st.selectbox("Sex", ["Male", "Female", "Other"])
+            sex = st.selectbox("Sex", ["Male", "Female", "Other"],index=None)
         with col2:
             age = st.number_input("Age", 1, 120, 35)
             contact = st.text_input("Contact Number", "")
             if contact and len(contact) > 10:
                 st.warning("Contact number cannot exceed 10 digits!")
             address = st.text_area("Address", "")
-        register_submit = st.form_submit_button("✅ Register Patient")
+        register_submit = st.form_submit_button(" Register Patient")
 
     if register_submit:
         if not patient_id or not patient_name or not sex or len(contact) != 10:
@@ -59,7 +59,7 @@ if st.session_state.page == "registration":
                 "Contact": contact,
                 "Address": address
             }
-            st.success(f"Patient {patient_name} registered successfully! 🎉")
+            st.success(f"Patient {patient_name} registered successfully!")
             st.session_state.page = "prediction"  # move to next page automatically
 
 # ------------------- PAGE 2: Diabetes Prediction & Doctor Report -------------------
@@ -102,8 +102,8 @@ elif st.session_state.page == "prediction":
         user_data = [[preg, glucose, bp, skin, insulin, bmi, dpf, age]]
         prediction = model.predict(user_data)[0]
 
-        st.subheader("📊 Prediction Result:")
-        result_text = "🚨 High Risk of Diabetes Detected 😟" if prediction == 1 else "😃🎉 Low Risk / No Diabetes Detected"
+        st.subheader("Prediction Result:")
+        result_text = "High Risk of Diabetes Detected" if prediction == 1 else " Low Risk / No Diabetes Detected"
         st.markdown(f"### {result_text}")
 
         # ------------------- CREATE DOCTOR REPORT -------------------
@@ -156,7 +156,7 @@ Keep the tone professional, warm, and medically appropriate.
             mime="text/plain"
         )
 
-        st.success("✅ Doctor Report generated successfully!")
+        st.success("Doctor Report generated successfully!")
 
     st.divider()
     if st.button("🔄 Register New Patient"):
