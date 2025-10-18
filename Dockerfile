@@ -22,4 +22,4 @@ RUN mkdir -p /app/reports
 
 EXPOSE 8080
 
-CMD ["gunicorn", "--bind", "0.0.0.0:${PORT}", "flask_app:app"]
+CMD exec gunicorn --bind 0.0.0.0:${PORT:-8080} flask_app:app
