@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Predictions - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2b98c9;
+            --accent: #5DADE2;
+            --card-bg: #ffffff;
+            --shadow: 0 8px 30px rgba(43,152,201,0.12);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #87CEEB 0%, #5DADE2 100%);
+            min-height: 100vh;
+            padding: 22px;
+            color: #0f172a;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #87CEEB 0%, #5DADE2 100%);
+            padding: 30px;
+            color: white;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border: 2px solid white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Patient Info Card */
+        .patient-info {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* Content Area */
+        .content {
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 22px;
+            color: #667eea;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #667eea;
+        }
+
+        .loading i {
+            font-size: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 60px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        /* Predictions Grid */
+        .predictions-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .prediction-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .prediction-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .prediction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .prediction-date {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .risk-badge {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .risk-high {
+            background: #fee;
+            color: #e53e3e;
+        }
+
+        .risk-low {
+            background: #efe;
+            color: #38a169;
+        }
+
+        /* Clinical Parameters Grid */
+        .parameters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .parameter-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .parameter-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .parameter-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* AI Analysis Section */
+        .ai-analysis {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .ai-analysis h4 {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ai-analysis p {
+            line-height: 1.6;
+            opacity: 0.95;
+        }
+
+        /* Action Buttons */
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-download {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-download:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        /* Message */
+        .message {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .message.error {
+            background: #fee;
+            color: #e53e3e;
+            border-left: 4px solid #e53e3e;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .patient-info {
+                grid-template-columns: 1fr;
+            }
+
+            .parameters-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header-top {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-top">
+                <h1>
+                    <i class="fas fa-user-md"></i>
+                    Patient Predictions
+                </h1>
+                <a href="/admin/patients" class="btn-back">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Patients
+                </a>
+            </div>
+
+            <!-- Patient Info -->
+            <div class="patient-info" id="patientInfo">
+                <!-- Patient info will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div id="messageBox" class="message"></div>
+
+            <div class="section-title">
+                <i class="fas fa-chart-line"></i>
+                Prediction History
+            </div>
+
+            <div id="loadingState" class="loading">
+                <i class="fas fa-spinner"></i>
+                <p>Loading predictions...</p>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fas fa-inbox"></i>
+                <h3>No Predictions Found</h3>
+                <p>This patient has not made any predictions yet.</p>
+            </div>
+
+            <div id="predictionsContainer" class="predictions-grid" style="display: none;">
+                <!-- Predictions will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get user_id from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user_id');
+
+        // Load predictions on page load
+        window.onload = function() {
+            if (userId) {
+                loadPatientPredictions(userId);
+            } else {
+                showMessage('Invalid patient ID', 'error');
+            }
+        };
+
+        // Load patient predictions
+        async function loadPatientPredictions(userId) {
+            try {
+                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('predictionsContainer').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'none';
+
+                const response = await fetch(`/admin/patient/${userId}/predictions`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displayPatientInfo(data.patient);
+                    displayPredictions(data.predictions);
+                } else {
+                    showMessage('Failed to load predictions: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading predictions:', error);
+                showMessage('Error loading predictions. Please try again.', 'error');
+            } finally {
+                document.getElementById('loadingState').style.display = 'none';
+            }
+        }
+
+        // Display patient info
+        function displayPatientInfo(patient) {
+            const patientInfo = document.getElementById('patientInfo');
+            patientInfo.innerHTML = `
+                <div class="info-item">
+                    <div class="info-label">Patient Name</div>
+                    <div class="info-value">${patient.full_name}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Username</div>
+                    <div class="info-value">${patient.username}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Email</div>
+                    <div class="info-value">${patient.email}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Patient ID</div>
+                    <div class="info-value">${patient.user_id}</div>
+                </div>
+            `;
+        }
+
+        // Display predictions
+        function displayPredictions(predictions) {
+            const container = document.getElementById('predictionsContainer');
+            container.innerHTML = '';
+
+            if (!predictions || predictions.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('predictionsContainer').style.display = 'grid';
+
+            predictions.forEach(prediction => {
+                const card = createPredictionCard(prediction);
+                container.appendChild(card);
+            });
+        }
+
+        // Create prediction card
+        function createPredictionCard(prediction) {
+            const card = document.createElement('div');
+            card.className = 'prediction-card';
+
+            // Format date - handle both ISO format and timestamp
+            let formattedDate = 'Unknown Date';
+            try {
+                if (prediction.timestamp) {
+                    const date = new Date(prediction.timestamp);
+                    if (!isNaN(date.getTime())) {
+                        formattedDate = date.toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: '2-digit', 
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        });
+                    }
+                } else if (prediction.created_at) {
+                    // created_at is a timestamp in seconds
+                    const date = new Date(prediction.created_at * 1000);
+                    if (!isNaN(date.getTime())) {
+                        formattedDate = date.toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: '2-digit', 
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error('Date parsing error:', e);
+            }
+
+            // Determine risk level
+            const isHighRisk = prediction.result === 'High Risk' || prediction.risk_level === 'high';
+            const riskClass = isHighRisk ? 'risk-high' : 'risk-low';
+            const riskText = isHighRisk ? 'HIGH RISK' : 'LOW RISK';
+
+            // Clinical parameters - check for data in multiple formats
+            const parameters = [
+                { label: 'Pregnancies', value: prediction.Pregnancies ?? prediction.pregnancies ?? 'N/A' },
+                { label: 'Glucose', value: prediction.Glucose ?? prediction.glucose ?? 'N/A', unit: ' mg/dL' },
+                { label: 'Blood Pressure', value: prediction.BloodPressure ?? prediction.blood_pressure ?? 'N/A', unit: ' mmHg' },
+                { label: 'Skin Thickness', value: prediction.SkinThickness ?? prediction.skin_thickness ?? 'N/A', unit: ' mm' },
+                { label: 'Insulin', value: prediction.Insulin ?? prediction.insulin ?? 'N/A', unit: ' μU/mL' },
+                { label: 'BMI', value: prediction.BMI ?? prediction.bmi ?? 'N/A' },
+                { label: 'Diabetes Pedigree', value: prediction.DiabetesPedigreeFunction ?? prediction.diabetes_pedigree ?? 'N/A' },
+                { label: 'Age', value: prediction.Age ?? prediction.age ?? 'N/A', unit: ' years' },
+                { label: 'Smoking', value: (prediction.smoking === 1 || prediction.smoking === '1') ? 'Yes' : ((prediction.smoking === 0 || prediction.smoking === '0') ? 'No' : 'N/A') },
+                { label: 'Physical Activity', value: (prediction.physical_activity === 1 || prediction.physical_activity === '1') ? 'Yes' : ((prediction.physical_activity === 0 || prediction.physical_activity === '0') ? 'No' : 'N/A') },
+                { label: 'Alcohol Intake', value: (prediction.alcohol_intake === 1 || prediction.alcohol_intake === '1') ? 'Yes' : ((prediction.alcohol_intake === 0 || prediction.alcohol_intake === '0') ? 'No' : 'N/A') },
+                { label: 'Family History', value: (prediction.family_history === 1 || prediction.family_history === '1') ? 'Yes' : ((prediction.family_history === 0 || prediction.family_history === '0') ? 'No' : 'N/A') },
+                { label: 'Sleep Hours', value: prediction.sleep_hours ?? 'N/A', unit: ' hrs/day' }
+            ];
+
+            let parametersHTML = '';
+            parameters.forEach(param => {
+                const value = param.value !== 'N/A' && param.value !== null && param.value !== undefined
+                    ? param.value + (param.unit || '')
+                    : 'N/A';
+                parametersHTML += `
+                    <div class="parameter-item">
+                        <div class="parameter-label">${param.label}</div>
+                        <div class="parameter-value">${value}</div>
+                    </div>
+                `;
+            });
+
+            card.innerHTML = `
+                <div class="prediction-header">
+                    <div class="prediction-date">
+                        <i class="fas fa-calendar-alt"></i>
+                        ${formattedDate}
+                    </div>
+                    <div class="risk-badge ${riskClass}">
+                        ${riskText} (${prediction.confidence}%)
+                    </div>
+                </div>
+
+                <div class="parameters-grid">
+                    ${parametersHTML}
+                </div>
+
+                ${prediction.ai_analysis ? `
+                    <div class="ai-analysis">
+                        <h4>
+                            <i class="fas fa-robot"></i>
+                            AI Medical Analysis
+                        </h4>
+                        <p>${prediction.ai_analysis}</p>
+                    </div>
+                ` : ''}
+
+                <div class="card-actions">
+                    <button class="btn btn-download" onclick="downloadReport('${prediction.id || prediction.report_id || prediction.firebase_id}')">
+                        <i class="fas fa-download"></i>
+                        Download PDF Report
+                    </button>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Download report
+        async function downloadReport(reportId) {
+            try {
+                const response = await fetch(`/download_report/${reportId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Download failed');
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `diabetes_report_${reportId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                showMessage('Report downloaded successfully!', 'success');
+            } catch (error) {
+                console.error('Download error:', error);
+                showMessage('Failed to download report. Please try again.', 'error');
+            }
+        }
+
+        // Show message
+        function showMessage(message, type) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.className = 'message ' + type;
+            messageBox.style.display = 'block';
+
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

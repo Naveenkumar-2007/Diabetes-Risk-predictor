@@ -1,12 +1,21 @@
-numpy==2.3.3
-pandas==2.3.2
-scikit-learn==1.7.2
-streamlit==1.50.0
-pydantic==2.11.9
-pydantic-settings==2.11.0
-python-dotenv==1.1.1
-openai>=1.68.2
-langchain
-langchain-core
-langchain-community
-langchain-groq
+# Core application
+Flask==3.0.3
+gunicorn==22.0.0
+python-dotenv==1.0.1
+
+# Model inference
+numpy==1.26.4
+scikit-learn==1.5.2
+
+# External services
+requests==2.32.3
+firebase-admin==6.5.0
+
+# LLM integration
+langchain==0.2.12
+langchain-core==0.2.26
+langchain-community==0.2.10
+langchain-groq==0.1.6
+
+# Reporting
+reportlab==4.1.0

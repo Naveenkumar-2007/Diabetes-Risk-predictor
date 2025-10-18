@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Medical Reports - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2b98c9;
+            --accent: #5DADE2;
+            --card-bg: #ffffff;
+            --shadow: 0 8px 30px rgba(43,152,201,0.12);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #87CEEB 0%, #5DADE2 100%);
+            min-height: 100vh;
+            padding: 22px;
+            color: #0f172a;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #87CEEB 0%, #5DADE2 100%);
+            padding: 30px;
+            color: white;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border: 2px solid white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Filters */
+        .filters {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filters input,
+        .filters select {
+            padding: 10px 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+        }
+
+        .filters input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filters select {
+            min-width: 150px;
+        }
+
+        /* Content Area */
+        .content {
+            padding: 30px;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #87CEEB, #5DADE2);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* Reports Table */
+        .reports-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .reports-table thead {
+            background: linear-gradient(135deg, #87CEEB, #5DADE2);
+            color: white;
+        }
+
+        .reports-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .reports-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .reports-table tbody tr:hover {
+            background-color: #f9fafb;
+        }
+
+        .risk-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .risk-high {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+
+        .risk-low {
+            background-color: #d1fae5;
+            color: #059669;
+        }
+
+        .btn-view {
+            background: var(--primary);
+            color: white;
+            padding: 9px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.12s, box-shadow 0.12s;
+        }
+
+        .btn-view:hover {
+            background: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(43,152,201,0.15);
+        }
+
+        .loading, .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+
+        .loading i, .empty-state i {
+            font-size: 48px;
+            color: #9ca3af;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #d1fae5;
+            color: #059669;
+            border-left: 4px solid #059669;
+        }
+
+        .message.error {
+            background-color: #fee2e2;
+            color: #dc2626;
+            border-left: 4px solid #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-top">
+                <h1>
+                    <i class="fas fa-file-medical-alt"></i>
+                    All Medical Reports
+                </h1>
+                <a href="/admin/patients" class="btn-back">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Patients
+                </a>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters">
+                <input type="text" id="searchInput" placeholder="Search by patient name..." />
+                <select id="riskFilter">
+                    <option value="">All Risk Levels</option>
+                    <option value="high">High Risk</option>
+                    <option value="low">Low Risk</option>
+                </select>
+                <button class="btn-view" onclick="loadReports()">
+                    <i class="fas fa-sync"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div id="messageBox" class="message"></div>
+
+            <!-- Statistics -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <i class="fas fa-file-medical fa-2x"></i>
+                    <div class="stat-number" id="totalReports">0</div>
+                    <div class="stat-label">Total Reports</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    <div class="stat-number" id="highRiskReports">0</div>
+                    <div class="stat-label">High Risk</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-check-circle fa-2x"></i>
+                    <div class="stat-number" id="lowRiskReports">0</div>
+                    <div class="stat-label">Low Risk</div>
+                </div>
+            </div>
+
+            <div id="loadingState" class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading reports...</p>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fas fa-inbox"></i>
+                <h3>No Reports Found</h3>
+                <p>No medical reports available in the system.</p>
+            </div>
+
+            <div id="reportsContainer" style="display: none;">
+                <table class="reports-table">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Patient Name</th>
+                            <th>Age</th>
+                            <th>Glucose</th>
+                            <th>BMI</th>
+                            <th>Risk Level</th>
+                            <th>Confidence</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportsTableBody">
+                        <!-- Reports will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allReports = [];
+
+        // Load all reports on page load
+        window.onload = function() {
+            loadReports();
+        };
+
+        // Load reports from backend
+        async function loadReports() {
+            try {
+                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('reportsContainer').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'none';
+
+                const response = await fetch('/admin/get_all_reports');
+                const data = await response.json();
+
+                if (data.success) {
+                    allReports = data.reports;
+                    updateStatistics();
+                    displayReports(allReports);
+                } else {
+                    showMessage('Failed to load reports: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                showMessage('Error loading reports. Please try again.', 'error');
+            } finally {
+                document.getElementById('loadingState').style.display = 'none';
+            }
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            const total = allReports.length;
+            const highRisk = allReports.filter(r => r.risk_level === 'high').length;
+            const lowRisk = allReports.filter(r => r.risk_level === 'low').length;
+
+            document.getElementById('totalReports').textContent = total;
+            document.getElementById('highRiskReports').textContent = highRisk;
+            document.getElementById('lowRiskReports').textContent = lowRisk;
+        }
+
+        // Display reports in table
+        function displayReports(reports) {
+            const tbody = document.getElementById('reportsTableBody');
+            tbody.innerHTML = '';
+
+            if (!reports || reports.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('reportsContainer').style.display = 'block';
+
+            reports.forEach(report => {
+                const tr = document.createElement('tr');
+                
+                // Format date
+                let formattedDate = 'N/A';
+                try {
+                    if (report.timestamp) {
+                        const date = new Date(report.timestamp);
+                        formattedDate = date.toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        });
+                    } else if (report.created_at) {
+                        const date = new Date(report.created_at * 1000);
+                        formattedDate = date.toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                        });
+                    }
+                } catch (e) {
+                    console.error('Date parsing error:', e);
+                }
+
+                const isHighRisk = report.risk_level === 'high';
+                const riskClass = isHighRisk ? 'risk-high' : 'risk-low';
+                const riskText = isHighRisk ? 'HIGH RISK' : 'LOW RISK';
+
+                tr.innerHTML = `
+                    <td>${formattedDate}</td>
+                    <td><strong>${report.patient_name || 'N/A'}</strong></td>
+                    <td>${report.age || report.Age || 'N/A'}</td>
+                    <td>${report.Glucose || report.glucose || 'N/A'} mg/dL</td>
+                    <td>${report.BMI || report.bmi || 'N/A'}</td>
+                    <td><span class="risk-badge ${riskClass}">${riskText}</span></td>
+                    <td>${report.confidence || 'N/A'}%</td>
+                    <td>
+                        <a href="/download_report/${report.id}" class="btn-view" onclick="event.preventDefault(); downloadReport('${report.id}')">
+                            <i class="fas fa-download"></i>
+                            Download
+                        </a>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Download report
+        async function downloadReport(reportId) {
+            try {
+                const response = await fetch(`/download_report/${reportId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Download failed');
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `diabetes_report_${reportId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                showMessage('Report downloaded successfully!', 'success');
+            } catch (error) {
+                console.error('Download error:', error);
+                showMessage('Failed to download report. Please try again.', 'error');
+            }
+        }
+
+        // Filter reports by search and risk level
+        document.getElementById('searchInput').addEventListener('input', filterReports);
+        document.getElementById('riskFilter').addEventListener('change', filterReports);
+
+        function filterReports() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const riskFilter = document.getElementById('riskFilter').value;
+
+            const filtered = allReports.filter(report => {
+                const matchesSearch = !searchTerm || 
+                    (report.patient_name || '').toLowerCase().includes(searchTerm);
+                const matchesRisk = !riskFilter || report.risk_level === riskFilter;
+                
+                return matchesSearch && matchesRisk;
+            });
+
+            displayReports(filtered);
+        }
+
+        // Show message
+        function showMessage(message, type) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.className = 'message ' + type;
+            messageBox.style.display = 'block';
+
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

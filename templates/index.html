@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetes Health Predictor – AI Doctor Portal</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <i class="fas fa-hospital-symbol"></i>
+                <span>Diabetes Health Predictor</span>
+            </div>
+            <div class="nav-subtitle">Advanced Diabetes Assessment & Diagnostic Center</div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <a href="/user/dashboard" class="dashboard-link" title="View My Dashboard">
+                    <i class="fas fa-chart-line"></i> My Dashboard
+                </a>
+                <a href="/logout" class="dashboard-link" title="Logout" style="background: #f56565;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <div class="container">
+            <!-- Header Section -->
+            <div class="header-section fade-in">
+                <!-- Animated Logo -->
+                <div class="logo-container">
+                    <div class="logo-circle">
+                        <i class="fas fa-heartbeat logo-icon"></i>
+                        <div class="pulse-ring"></div>
+                        <div class="pulse-ring-2"></div>
+                    </div>
+                </div>
+                
+                <h1>
+                    <span class="gradient-text">Diabetes Risk Prediction</span>
+                </h1>
+                <p class="subtitle">
+                    <i class="fas fa-shield-heart"></i> 
+                    AI-Powered Medical Diagnostic System
+                    <i class="fas fa-shield-heart"></i>
+                </p>
+            </div>
+
+            <!-- Step 1: Patient Registration Form -->
+            <div class="card fade-in" id="registrationCard">
+                <div class="card-header">
+                    <i class="fas fa-user-md"></i>
+                    <h2>Step 1: Patient Registration</h2>
+                </div>
+                <div class="card-body">
+                    <form id="patientForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="patientName">
+                                    <i class="fas fa-user"></i> Patient Name *
+                                </label>
+                                <input type="text" id="patientName" name="name" required 
+                                       pattern="[A-Za-z\s]+" 
+                                       title="Only letters and spaces allowed"
+                                       minlength="2"
+                                       maxlength="100"
+                                       placeholder="Enter full name"
+                                       oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '')">
+                                <small style="color: #64748b; font-size: 0.85rem;">Letters only (no numbers or symbols)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="patientAge">
+                                    <i class="fas fa-birthday-cake"></i> Age *
+                                </label>
+                                <input type="number" id="patientAge" name="age" required 
+                                       min="1" max="120" step="1" 
+                                       placeholder="Enter age"
+                                       oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3)">
+                                <small style="color: #64748b; font-size: 0.85rem;">Age must be between 1-120 years</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="patientSex">
+                                    <i class="fas fa-venus-mars"></i> Sex *
+                                </label>
+                                <select id="patientSex" name="sex" required>
+                                    <option value="">Select sex</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="patientContact">
+                                    <i class="fas fa-phone"></i> Contact Number *
+                                </label>
+                                <input type="tel" id="patientContact" name="contact" required 
+                                       pattern="[0-9]{10}" 
+                                       title="Enter exactly 10 digits"
+                                       maxlength="10" 
+                                       placeholder="10-digit number"
+                                       oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
+                                <small style="color: #64748b; font-size: 0.85rem;">Numbers only - exactly 10 digits</small>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label for="patientAddress">
+                                    <i class="fas fa-map-marker-alt"></i> Address
+                                </label>
+                                <textarea id="patientAddress" name="address" rows="2" 
+                                          placeholder="Enter residential address"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="button-group">
+                            <button type="submit" class="btn btn-primary" id="proceedBtn">
+                                <i class="fas fa-arrow-right"></i> Proceed to Health Details
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Step 2: Medical Test Section (Hidden Initially) -->
+            <div class="card fade-in" id="medicalTestCard" style="display: none;">
+                <div class="card-header">
+                    <i class="fas fa-vials"></i>
+                    <h2>Step 2: Health & Medical Test Details</h2>
+                </div>
+                <div class="card-body">
+                    <!-- Patient Info Summary -->
+                    <div class="patient-summary" id="patientSummary">
+                        <!-- Will be filled dynamically -->
+                    </div>
+                    
+                    <form id="medicalForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="pregnancies">
+                                    <i class="fas fa-baby"></i> Number of Pregnancies
+                                </label>
+                                <input type="number" id="pregnancies" name="pregnancies" 
+                                       min="0" max="20" value="0" step="1"
+                                       oninput="this.value = Math.max(0, Math.min(20, parseInt(this.value) || 0))">
+                                <small>Total number of pregnancies (0-20)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="glucose">
+                                    <i class="fas fa-tint"></i> Glucose Level (mg/dL) *
+                                </label>
+                                <input type="number" id="glucose" name="glucose" required 
+                                       min="0" max="300" step="0.1" placeholder="e.g., 120"
+                                       oninput="if(this.value > 300) this.value = 300; if(this.value < 0) this.value = 0;">
+                                <small>Fasting: 70-100 mg/dL (Normal)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bloodPressure">
+                                    <i class="fas fa-heart-pulse"></i> Blood Pressure (mmHg) *
+                                </label>
+                                <input type="number" id="bloodPressure" name="bloodPressure" required 
+                                       min="0" max="200" step="1" placeholder="e.g., 80"
+                                       oninput="if(this.value > 200) this.value = 200; if(this.value < 0) this.value = 0;">
+                                <small>Diastolic BP - Normal: 60-80 mmHg</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="skinThickness">
+                                    <i class="fas fa-ruler"></i> Skin Thickness (mm)
+                                </label>
+                                <input type="number" id="skinThickness" name="skinThickness" 
+                                       min="0" max="100" step="0.1" value="20" placeholder="e.g., 20"
+                                       oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;">
+                                <small>Triceps skin fold thickness (0-100 mm)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="insulin">
+                                    <i class="fas fa-syringe"></i> Insulin Level (μU/mL)
+                                </label>
+                                <input type="number" id="insulin" name="insulin" 
+                                       min="0" max="900" step="0.1" value="79" placeholder="e.g., 79"
+                                       oninput="if(this.value > 900) this.value = 900; if(this.value < 0) this.value = 0;">
+                                <small>2-Hour serum insulin (Normal: 16-166)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bmi">
+                                    <i class="fas fa-weight-scale"></i> BMI (Body Mass Index) *
+                                </label>
+                                <input type="number" id="bmi" name="bmi" required 
+                                       min="5" max="100" step="0.1" placeholder="Enter your actual BMI"
+                                       title="Enter your actual BMI value for accurate prediction">
+                                <small>Enter your actual BMI (Weight(kg) / Height²(m²)) - Normal: 18.5-24.9</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="diabetesPedigreeFunction">
+                                    <i class="fas fa-dna"></i> Diabetes Pedigree Function *
+                                </label>
+                                <input type="number" id="diabetesPedigreeFunction" 
+                                       name="diabetesPedigreeFunction" required 
+                                       min="0" max="3" step="0.001" placeholder="e.g., 0.472"
+                                       oninput="if(this.value > 3) this.value = 3; if(this.value < 0) this.value = 0;">
+                                <small>Family history indicator (0-2.5 typical)</small>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="button" class="btn btn-secondary" onclick="goBackToRegistration()">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="predictBtn">
+                                <i class="fas fa-microscope"></i> Analyze & Predict Risk
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Step 3: Results Section (Hidden Initially) -->
+            <div class="card fade-in" id="resultsCard" style="display: none;">
+                <div class="card-header">
+                    <i class="fas fa-clipboard-check"></i>
+                    <h2>Step 3: Analysis Results</h2>
+                </div>
+                <div class="card-body">
+                    <div class="result-container" id="resultContainer">
+                        <!-- Results will be dynamically inserted here -->
+                    </div>
+                    
+                    <div class="button-group" style="margin-top: 20px;">
+                        <button type="button" class="btn btn-success" id="generateReportBtn" 
+                                onclick="generateReport()">
+                            <i class="fas fa-file-medical"></i> Generate Medical Report
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="newPrediction()">
+                            <i class="fas fa-user-plus"></i> New Patient Prediction
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-medical-alt"></i> AI Doctor Report</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="reportContent">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Generating comprehensive medical report...</p>
+                </div>
+            </div>
+            <div class="modal-footer" id="reportFooter" style="display: none;">
+                <button class="btn btn-primary" onclick="downloadReport()">
+                    <i class="fas fa-download"></i> Download Report
+                </button>
+                <button class="btn btn-secondary" onclick="closeModal()">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Processing your request...</p>
+    </div>
+
+    <!-- Audio Elements for Alerts -->
+    <audio id="alertSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="successSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Footer -->
+    <!-- =======================
+     Advanced Footer Section
+======================== -->
+<footer class="footer">
+  <div class="footer-container">
+    
+    <!-- Left: Branding -->
+    <div class="footer-brand">
+      <h3>🩺 Diabetes Health Predictor</h3>
+      <p>AI-Powered Diabetes Risk Assessment & Preventive Diagnostic System.</p>
+      <p class="footer-year">© 2025 Diabetes Assessment & Diagnostic Center</p>
+    </div>
+
+    <!-- Middle: Quick Links -->
+    <div class="footer-links">
+      <h4>Quick Links</h4>
+      <ul>
+        <li><a href="#about">About</a></li>
+        <li><a href="#dashboard">Doctor Dashboard</a></li>
+        <li><a href="#reports">Generate Report</a></li>
+        <li><a href="#contact">Contact Support</a></li>
+      </ul>
+    </div>
+
+    <!-- Right: Contact Info -->
+    <div class="footer-contact">
+      <h4>Contact Us</h4>
+      <p><i class="fas fa-envelope"></i> naveenkumarchapala02@gmail.com</p>
+      
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>Advanced Endocrinology Department | Powered by <span>AI & Machine Learning</span></p>
+    <p class="dev-credit"><i class="fas fa-code"></i> Developed with ❤️ by <strong>Naveenkumar</strong></p>
+  </div>
+</footer>
+
+<!-- ============ FOOTER STYLE ============ -->
+<style>
+.footer {
+  background: linear-gradient(135deg, #007bff, #00a2ff);
+  color: #fff;
+  padding: 40px 0 20px;
+  font-family: 'Poppins', sans-serif;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-container {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  max-width: 1100px;
+  margin: auto;
+  text-align: left;
+}
+
+.footer h3, .footer h4 {
+  color: #fff;
+  margin-bottom: 15px;
+}
+
+.footer p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.footer-links ul {
+  list-style: none;
+  padding: 0;
+}
+
+.footer-links ul li {
+  margin: 8px 0;
+}
+
+.footer-links ul li a {
+  color: #eaf6ff;
+  text-decoration: none;
+  transition: 0.3s;
+}
+
+.footer-links ul li a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.footer-contact p i {
+  margin-right: 8px;
+  color: #fff;
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  margin-top: 25px;
+  padding-top: 15px;
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
+.footer-bottom span {
+  font-weight: 600;
+}
+
+.dev-credit {
+  margin-top: 5px;
+  font-size: 0.9rem;
+}
+
+.footer-year {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+/* Floating glow animation */
+.footer::before {
+  content: "";
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+  top: -50px;
+  left: -50px;
+  border-radius: 50%;
+  animation: pulse 8s infinite alternate;
+}
+
+@keyframes pulse {
+  from { transform: scale(1); opacity: 0.5; }
+  to { transform: scale(1.3); opacity: 0.8; }
+}
+
+@media (max-width: 768px) {
+  .footer-container {
+    flex-direction: column;
+    text-align: center;
+  }
+  .footer-links, .footer-contact {
+    margin-top: 20px;
+  }
+}
+</style>
+
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

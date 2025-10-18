@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Management - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2b98c9;
+            --accent: #5DADE2;
+            --card-bg: #ffffff;
+            --muted: #6b7280;
+            --shadow: 0 8px 30px rgba(43,152,201,0.12);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #87CEEB 0%, #5DADE2 100%);
+            min-height: 100vh;
+            padding: 22px;
+            color: #0f172a;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #87CEEB 0%, #5DADE2 100%);
+            padding: 30px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 6px 20px rgba(43,152,201,0.12);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 26px rgba(43,152,201,0.18);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Navigation Menu */
+        .nav-menu {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .nav-menu ul {
+            list-style: none;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-menu a {
+            text-decoration: none;
+            color: #87CEEB;
+            font-weight: 500;
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-menu a:hover {
+            background: #B0E0E6;
+            color: white;
+        }
+
+        .nav-menu a.active {
+            background: #ADD8E6;
+            color: white;
+        }
+
+        /* Statistics Cards */
+        .stats-container {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #87CEEB 0%, #5DADE2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(135, 206, 235, 0.3);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card .icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        /* Search and Filter */
+        .search-section {
+            padding: 0 30px 20px 30px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 6px 20px rgba(43,152,201,0.08);
+        }
+
+        /* Patients Table */
+        .table-container {
+            padding: 0 30px 30px 30px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #87CEEB 0%, #5DADE2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e0e0e0;
+            transition: background-color 0.3s;
+        }
+
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        td {
+            padding: 15px;
+            font-size: 14px;
+        }
+
+        .patient-name {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-high {
+            background: #fee;
+            color: #e53e3e;
+        }
+
+        .badge-low {
+            background: #efe;
+            color: #38a169;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-view {
+            background: var(--primary);
+            color: white;
+            padding: 9px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            transition: transform 0.12s, box-shadow 0.12s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-view:hover {
+            background: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(43,152,201,0.15);
+        }
+
+        .btn-delete {
+            background: #e53e3e;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .btn-delete:hover {
+            background: #c53030;
+            transform: translateY(-2px);
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #667eea;
+        }
+
+        .loading i {
+            font-size: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 60px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        /* Message Box */
+        .message {
+            padding: 15px 30px;
+            margin: 0 30px 20px 30px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .message.success {
+            background: #efe;
+            color: #38a169;
+            border-left: 4px solid #38a169;
+        }
+
+        .message.error {
+            background: #fee;
+            color: #e53e3e;
+            border-left: 4px solid #e53e3e;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .nav-menu ul {
+                flex-direction: column;
+            }
+
+            .table-container {
+                overflow-x: scroll;
+            }
+
+            table {
+                min-width: 800px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <i class="fas fa-users"></i>
+                Patient Management
+            </h1>
+            <div class="header-actions">
+                <a href="/admin/dashboard" class="btn btn-secondary">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/logout" class="btn btn-primary">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <div class="nav-menu">
+            <ul>
+                <li><a href="/admin/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                <li><a href="/admin/patients" class="active"><i class="fas fa-users"></i> Patients</a></li>
+                <li><a href="/admin/reports"><i class="fas fa-file-medical"></i> All Reports</a></li>
+            </ul>
+        </div>
+
+        <!-- Message Box -->
+        <div id="messageBox" class="message"></div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="icon"><i class="fas fa-users"></i></div>
+                <div class="label">Total Patients</div>
+                <div class="value" id="totalPatients">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon"><i class="fas fa-heartbeat"></i></div>
+                <div class="label">Total Predictions</div>
+                <div class="value" id="totalPredictions">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="label">High Risk Count</div>
+                <div class="value" id="highRiskTotal">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon"><i class="fas fa-check-circle"></i></div>
+                <div class="label">Low Risk Count</div>
+                <div class="value" id="lowRiskTotal">0</div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search by name, username, or email...">
+                <button class="btn btn-primary" onclick="loadPatients()">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Patients Table -->
+        <div class="table-container">
+            <div id="loadingState" class="loading">
+                <i class="fas fa-spinner"></i>
+                <p>Loading patients...</p>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fas fa-user-slash"></i>
+                <h3>No Patients Found</h3>
+                <p>There are no registered patients in the system.</p>
+            </div>
+
+            <table id="patientsTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Total Predictions</th>
+                        <th>High Risk</th>
+                        <th>Low Risk</th>
+                        <th>Last Activity</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="patientsBody">
+                    <!-- Patients will be loaded here dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let allPatients = [];
+
+        // Load patients on page load
+        window.onload = function() {
+            loadPatients();
+        };
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function() {
+            filterPatients(this.value);
+        });
+
+        // Load all patients
+        async function loadPatients() {
+            try {
+                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('patientsTable').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'none';
+
+                const response = await fetch('/admin/get_all_patients');
+                const data = await response.json();
+
+                if (data.success) {
+                    allPatients = data.patients;
+                    displayPatients(allPatients);
+                    updateStatistics(allPatients);
+                } else {
+                    showMessage('Failed to load patients: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading patients:', error);
+                showMessage('Error loading patients. Please refresh the page.', 'error');
+            } finally {
+                document.getElementById('loadingState').style.display = 'none';
+            }
+        }
+
+        // Display patients in table
+        function displayPatients(patients) {
+            const tbody = document.getElementById('patientsBody');
+            tbody.innerHTML = '';
+
+            if (patients.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('patientsTable').style.display = 'table';
+
+            patients.forEach(patient => {
+                const row = document.createElement('tr');
+                
+                // Format last activity date
+                let lastActivity = 'N/A';
+                if (patient.last_activity && patient.last_activity !== 'N/A') {
+                    const date = new Date(patient.last_activity);
+                    lastActivity = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                }
+
+                row.innerHTML = `
+                    <td class="patient-name">${patient.full_name}</td>
+                    <td>${patient.username}</td>
+                    <td>${patient.email}</td>
+                    <td><strong>${patient.total_predictions}</strong></td>
+                    <td><span class="badge badge-high">${patient.high_risk_count}</span></td>
+                    <td><span class="badge badge-low">${patient.low_risk_count}</span></td>
+                    <td>${lastActivity}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-view" onclick="viewPatientPredictions('${patient.user_id}', '${patient.full_name}')">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button class="btn-delete" onclick="deletePatient('${patient.user_id}', '${patient.full_name}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Filter patients based on search
+        function filterPatients(searchTerm) {
+            searchTerm = searchTerm.toLowerCase();
+            const filtered = allPatients.filter(patient => 
+                patient.full_name.toLowerCase().includes(searchTerm) ||
+                patient.username.toLowerCase().includes(searchTerm) ||
+                patient.email.toLowerCase().includes(searchTerm)
+            );
+            displayPatients(filtered);
+        }
+
+        // Update statistics
+        function updateStatistics(patients) {
+            const totalPatients = patients.length;
+            let totalPredictions = 0;
+            let highRiskTotal = 0;
+            let lowRiskTotal = 0;
+
+            patients.forEach(patient => {
+                totalPredictions += patient.total_predictions;
+                highRiskTotal += patient.high_risk_count;
+                lowRiskTotal += patient.low_risk_count;
+            });
+
+            document.getElementById('totalPatients').textContent = totalPatients;
+            document.getElementById('totalPredictions').textContent = totalPredictions;
+            document.getElementById('highRiskTotal').textContent = highRiskTotal;
+            document.getElementById('lowRiskTotal').textContent = lowRiskTotal;
+        }
+
+        // View patient predictions
+        function viewPatientPredictions(userId, patientName) {
+            // Store patient info in sessionStorage
+            sessionStorage.setItem('viewingPatientId', userId);
+            sessionStorage.setItem('viewingPatientName', patientName);
+            
+            // Redirect to patient predictions page
+            window.location.href = `/admin/patient_predictions?user_id=${userId}`;
+        }
+
+        // Delete patient
+        async function deletePatient(userId, patientName) {
+            // Double confirmation
+            if (!confirm(`⚠️ DELETE PATIENT: ${patientName}\n\nThis will permanently delete:\n• Patient account\n• All prediction records\n• All medical reports\n• All statistics\n\nThis action CANNOT be undone!\n\nAre you sure you want to continue?`)) {
+                return;
+            }
+
+            if (!confirm(`Final confirmation: Delete ${patientName} and ALL their data permanently?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/patient/${userId}/delete`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage(`Patient ${patientName} deleted successfully!`, 'success');
+                    // Reload patients list
+                    setTimeout(() => {
+                        loadPatients();
+                    }, 1500);
+                } else {
+                    showMessage('Failed to delete patient: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting patient:', error);
+                showMessage('Error deleting patient. Please try again.', 'error');
+            }
+        }
+
+        // Show message
+        function showMessage(message, type) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.className = 'message ' + type;
+            messageBox.style.display = 'block';
+
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

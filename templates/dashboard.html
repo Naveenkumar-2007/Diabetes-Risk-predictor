@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Diabetes Predictor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root{
+            --primary: #87CEEB; /* sky blue */
+            --primary-dark: #2b98c9; /* darker blue for buttons */
+            --accent: #5DADE2;
+            --card-bg: #ffffff;
+            --muted: #6b7280;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --surface-shadow: 0 8px 30px rgba(43,152,201,0.12);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 50%, #f5f8fb 100%);
+            min-height: 100vh;
+            padding: 22px;
+            color: #111827;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            padding: 24px 28px;
+            border-radius: 12px;
+            box-shadow: var(--surface-shadow);
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .header .title {
+            display:flex;
+            flex-direction:column;
+            align-items:flex-start;
+            color: white;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 1.9rem;
+            margin-bottom: 6px;
+            font-weight:700;
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.95rem;
+            margin:0;
+        }
+
+        .header .actions {
+            display:flex;
+            gap:10px;
+            align-items:center;
+        }
+
+        .action-btn {
+            padding:10px 14px;
+            border-radius:8px;
+            font-weight:600;
+            color: white;
+            border:none;
+            cursor:pointer;
+            display:inline-flex;
+            align-items:center;
+            gap:8px;
+            box-shadow:0 6px 18px rgba(0,0,0,0.08);
+        }
+
+        .action-btn.primary{ background: var(--primary-dark); }
+        .action-btn.ghost{ background: rgba(255,255,255,0.18); color:white; border:1px solid rgba(255,255,255,0.12);} 
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            padding: 22px;
+            border-radius: 12px;
+            box-shadow: 0 8px 26px rgba(15,23,42,0.06);
+            text-align: center;
+            transition: transform 0.22s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .stat-card.total i { color: #87CEEB; }
+        .stat-card.high-risk i { color: #e74c3c; }
+        .stat-card.low-risk i { color: #27ae60; }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .controls {
+            background: rgba(255,255,255,0.9);
+            padding: 14px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(15,23,42,0.05);
+            margin-bottom: 18px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .controls input, .controls select, .controls button {
+            padding: 10px 16px;
+            border: 1px solid #e6eef6;
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.98rem;
+        }
+
+        .controls input, .controls select {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .controls button {
+            background: var(--primary-dark);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform 0.12s, box-shadow 0.12s;
+        }
+
+        .controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(43,152,201,0.12);
+        }
+
+        .data-table-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #87CEEB 0%, #5DADE2 100%);
+            color: white;
+            padding: 20px;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .data-table {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #eef2f6;
+            font-size: 0.95rem;
+        }
+
+        th {
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .risk-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .risk-high {
+            background: #ffe5e5;
+            color: #e74c3c;
+        }
+
+        .risk-low {
+            background: #e5ffe5;
+            color: #27ae60;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2rem;
+            color: #87CEEB;
+        }
+
+        .loading i {
+            font-size: 3rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #999;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items:center;
+            gap:8px;
+            margin-bottom: 20px;
+            padding: 10px 18px;
+            background: white;
+            color: var(--primary-dark);
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 700;
+            transition: transform 0.12s, box-shadow 0.12s;
+            box-shadow: 0 6px 20px rgba(15,23,42,0.05);
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .stat-card {
+                padding: 20px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .controls input, .controls select, .controls button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+            <a href="/" class="back-button">
+                <i class="fas fa-arrow-left"></i> Back to Predictor
+            </a>
+            <div style="display: flex; gap: 10px;">
+                <a href="/admin/patients" class="back-button" style="background: #87CEEB;">
+                    <i class="fas fa-users"></i> Patients
+                </a>
+                <a href="/change_password" class="back-button" style="background: #48bb78;">
+                    <i class="fas fa-key"></i> Change Password
+                </a>
+                <a href="/logout" class="back-button" style="background: #f56565;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+
+        <div class="header">
+            <h1><i class="fas fa-chart-line"></i> Admin Dashboard</h1>
+            <p>Patient Prediction History & Statistics (All Users)</p>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card total">
+                <i class="fas fa-users"></i>
+                <div class="stat-value" id="totalPredictions">0</div>
+                <div class="stat-label">Total Predictions</div>
+            </div>
+            <div class="stat-card high-risk">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div class="stat-value" id="highRiskCount">0</div>
+                <div class="stat-label">High Risk Cases</div>
+            </div>
+            <div class="stat-card low-risk">
+                <i class="fas fa-check-circle"></i>
+                <div class="stat-value" id="lowRiskCount">0</div>
+                <div class="stat-label">Low Risk Cases</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <input type="text" id="searchName" placeholder="Search by patient name...">
+            <select id="limitSelect">
+                <option value="10">Show 10 records</option>
+                <option value="25">Show 25 records</option>
+                <option value="50">Show 50 records</option>
+                <option value="100">Show 100 records</option>
+            </select>
+            <button onclick="loadData()">
+                <i class="fas fa-search"></i> Search
+            </button>
+            <button onclick="refreshData()">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
+        </div>
+
+        <div class="data-table-container">
+            <div class="table-header">
+                <i class="fas fa-table"></i> Patient Prediction History
+            </div>
+            <div class="data-table" id="dataTable">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>Loading data from Firebase...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load statistics
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/statistics');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.statistics;
+                    document.getElementById('totalPredictions').textContent = stats.total_predictions || 0;
+                    document.getElementById('highRiskCount').textContent = stats.high_risk_count || 0;
+                    document.getElementById('lowRiskCount').textContent = stats.low_risk_count || 0;
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        // Load patient history
+        async function loadPatientHistory() {
+            const searchName = document.getElementById('searchName').value;
+            const limit = document.getElementById('limitSelect').value;
+            
+            let url = `/patient_history?limit=${limit}`;
+            if (searchName) {
+                url += `&patient_name=${encodeURIComponent(searchName)}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const tableContainer = document.getElementById('dataTable');
+                
+                if (data.success && data.history.length > 0) {
+                    let tableHTML = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Patient Name</th>
+                                    <th>Age</th>
+                                    <th>Sex</th>
+                                    <th>Glucose</th>
+                                    <th>BMI</th>
+                                    <th>Risk Level</th>
+                                    <th>Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.history.forEach(record => {
+                        // Handle date - check for both timestamp formats
+                        let date = 'N/A';
+                        try {
+                            if (record.timestamp) {
+                                date = new Date(record.timestamp).toLocaleString('en-US', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                });
+                            } else if (record.created_at) {
+                                date = new Date(record.created_at * 1000).toLocaleString('en-US', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                });
+                            }
+                        } catch (e) {
+                            console.error('Date parse error:', e);
+                        }
+                        
+                        const riskClass = record.risk_level === 'high' ? 'risk-high' : 'risk-low';
+                        const riskText = record.risk_level === 'high' ? 'HIGH' : 'LOW';
+                        
+                        // Get values with fallbacks
+                        const patientName = record.patient_name || 'Unknown';
+                        const age = record.age || record.patient_age || 'N/A';
+                        const sex = record.sex || record.patient_sex || 'N/A';
+                        const glucose = record.Glucose || record.glucose || 'N/A';
+                        const bmi = record.BMI || record.bmi || 'N/A';
+                        const confidence = record.confidence || 'N/A';
+                        
+                        tableHTML += `
+                            <tr>
+                                <td>${date}</td>
+                                <td><strong>${patientName}</strong></td>
+                                <td>${age}</td>
+                                <td>${sex}</td>
+                                <td>${glucose}</td>
+                                <td>${bmi}</td>
+                                <td><span class="risk-badge ${riskClass}">${riskText}</span></td>
+                                <td>${confidence}%</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tableHTML += `
+                            </tbody>
+                        </table>
+                    `;
+                    
+                    tableContainer.innerHTML = tableHTML;
+                } else {
+                    tableContainer.innerHTML = `
+                        <div class="no-data">
+                            <i class="fas fa-inbox" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
+                            <p>No prediction data found</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+                document.getElementById('dataTable').innerHTML = `
+                    <div class="no-data">
+                        <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #e74c3c; margin-bottom: 10px;"></i>
+                        <p>Error loading data: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load all data
+        function loadData() {
+            loadStatistics();
+            loadPatientHistory();
+        }
+
+        // Refresh data
+        function refreshData() {
+            document.getElementById('searchName').value = '';
+            loadData();
+        }
+
+        // Load data on page load
+        window.onload = loadData;
+    </script>
+</body>
+</html>

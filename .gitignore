@@ -136,6 +136,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Firebase Service Account (SENSITIVE - Never commit!)
+firebase-service-account.json
+firebase-adminsdk-*.json
+
 # Spyder project settings
 .spyderproject
 .spyproject

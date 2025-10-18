@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Hospital System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* Side Navigation */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #1e40af 0%, #1e3a8a 100%);
+            color: white;
+            padding: 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-header {
+            padding: 30px 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hospital-logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .hospital-logo i {
+            font-size: 2.5rem;
+            color: #60a5fa;
+        }
+
+        .hospital-info h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .hospital-info p {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .user-profile {
+            padding: 25px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .user-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 2rem;
+            font-weight: 600;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .user-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .user-role {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .nav-menu {
+            padding: 15px 0;
+        }
+
+        .nav-item {
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #87CEEB;
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-left-color: #60a5fa;
+            color: #B0E0E6;
+        }
+
+        .nav-item.active {
+            background: rgba(96, 165, 250, 0.2);
+            border-left-color: #60a5fa;
+            color: #ADD8E6;
+        }
+
+        .nav-item i {
+            width: 20px;
+            font-size: 1.2rem;
+        }
+
+        .logout-section {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Main Content */
+        .dashboard-container {
+            margin-left: 280px;
+            flex: 1;
+            padding: 30px;
+        }
+
+        .header {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left h1 {
+            color: #1e293b;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .header-left p {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-right: 20px;
+        }
+
+        .icon-blue {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .icon-green {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .icon-red {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .icon-purple {
+            background: rgba(139, 92, 246, 0.1);
+            color: #8b5cf6;
+        }
+
+        .stat-content h3 {
+            font-size: 2rem;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .stat-content p {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .data-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .section-header h2 {
+            color: #1e293b;
+            font-size: 1.5rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        thead th {
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        thead th:first-child {
+            border-top-left-radius: 10px;
+        }
+
+        thead th:last-child {
+            border-top-right-radius: 10px;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e2e8f0;
+            transition: background 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: #f7fafc;
+        }
+
+        tbody td {
+            padding: 15px;
+            color: #2d3748;
+            font-size: 0.9rem;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-high {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .badge-low {
+            background: #c6f6d5;
+            color: #2f855a;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #a0aec0;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+                height: auto;
+            }
+
+            .dashboard-container {
+                margin-left: 0;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+
+            .header-right {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-container {
+                overflow-x: scroll;
+            }
+
+            table {
+                min-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Side Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="hospital-logo">
+                <i class="fas fa-hospital"></i>
+                <div class="hospital-info">
+                    <h1>City Hospital</h1>
+                    <p>Diabetes Care Center</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="user-profile">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <div class="user-name" id="sidebarUserName">Loading...</div>
+            <div class="user-role">Patient</div>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="/user/dashboard" class="nav-item active">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="/user/predict" class="nav-item">
+                <i class="fas fa-heartbeat"></i>
+                <span>New Prediction</span>
+            </a>
+            <a href="/user/profile" class="nav-item">
+                <i class="fas fa-user-circle"></i>
+                <span>My Profile</span>
+            </a>
+            <a href="/user/reports" class="nav-item">
+                <i class="fas fa-file-medical"></i>
+                <span>Medical Reports</span>
+            </a>
+            <a href="/user/comprehensive_analysis" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Health Analysis</span>
+            </a>
+            <a href="/change_password" class="nav-item">
+                <i class="fas fa-key"></i>
+                <span>Change Password</span>
+            </a>
+        </nav>
+
+        <div class="logout-section">
+            <a href="/logout" class="btn btn-secondary" style="width: 100%; text-align: center;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <h1>📊 Health Dashboard</h1>
+                <p>Track your diabetes risk assessments and health data</p>
+            </div>
+            <div class="header-right">
+                <a href="/user/predict" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> New Prediction
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue">
+                    <i class="fas fa-clipboard-check"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="totalPredictions">-</h3>
+                    <p>Total Predictions</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-green">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="lowRisk">-</h3>
+                    <p>Low Risk Results</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-red">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="highRisk">-</h3>
+                    <p>High Risk Results</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-purple">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="avgRisk">-</h3>
+                    <p>Average Risk %</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Predictions Table -->
+        <div class="data-section">
+            <div class="section-header">
+                <h2>My Prediction History</h2>
+                <button class="btn btn-primary" onclick="loadData()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+
+            <div id="loadingState" class="loading">
+                <i class="fas fa-spinner"></i>
+                <p>Loading your data...</p>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="fas fa-clipboard-list"></i>
+                <h3>No Predictions Yet</h3>
+                <p>Start by creating your first diabetes risk prediction</p>
+                <a href="/user/predict" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create First Prediction
+                </a>
+            </div>
+
+            <div id="dataTable" class="table-container" style="display: none;">
+                <div style="overflow-x: auto;">
+                    <table style="min-width: 1400px;">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 140px;">Date & Time</th>
+                                <th style="min-width: 150px;">Patient Name</th>
+                                <th style="min-width: 60px;">Age</th>
+                                <th style="min-width: 90px;">Pregnancies</th>
+                                <th style="min-width: 100px;">Glucose (mg/dL)</th>
+                                <th style="min-width: 120px;">Blood Pressure (mmHg)</th>
+                                <th style="min-width: 120px;">Skin Thickness (mm)</th>
+                                <th style="min-width: 100px;">Insulin (μU/mL)</th>
+                                <th style="min-width: 80px;">BMI</th>
+                                <th style="min-width: 110px;">Pedigree Function</th>
+                                <th style="min-width: 110px;">Risk Level</th>
+                                <th style="min-width: 100px;">Confidence</th>
+                                <th style="min-width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load user profile
+        async function loadUserProfile() {
+            try {
+                const response = await fetch('/api/profile');
+                const data = await response.json();
+
+                if (data.success) {
+                    const user = data.user;
+                    document.getElementById('sidebarUserName').textContent = user.full_name || 'User';
+                    const initials = (user.full_name || 'U').split(' ').map(n => n[0]).join('').toUpperCase();
+                    document.getElementById('userAvatar').textContent = initials;
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/statistics');
+                const data = await response.json();
+
+                if (data.success) {
+                    const stats = data.statistics;
+                    document.getElementById('totalPredictions').textContent = stats.total_predictions || 0;
+                    document.getElementById('lowRisk').textContent = stats.low_risk_count || 0;
+                    document.getElementById('highRisk').textContent = stats.high_risk_count || 0;
+                    
+                    const avgRisk = stats.average_risk_percentage 
+                        ? `${stats.average_risk_percentage.toFixed(1)}%` 
+                        : '0%';
+                    document.getElementById('avgRisk').textContent = avgRisk;
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        async function loadPredictions() {
+            try {
+                const response = await fetch('/patient_history?limit=50');
+                const data = await response.json();
+
+                const loadingState = document.getElementById('loadingState');
+                const emptyState = document.getElementById('emptyState');
+                const dataTable = document.getElementById('dataTable');
+                const tableBody = document.getElementById('tableBody');
+
+                loadingState.style.display = 'none';
+
+                if (data.success && data.history && data.history.length > 0) {
+                    emptyState.style.display = 'none';
+                    dataTable.style.display = 'block';
+
+                    tableBody.innerHTML = '';
+
+                    data.history.forEach(record => {
+                        const row = document.createElement('tr');
+                        
+                        const date = new Date(record.timestamp || record.created_at);
+                        const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                        
+                        // Extract all features
+                        const features = record.features || {};
+                        const patientName = record.patient_name || record.patient_info?.name || 'Unknown';
+                        const age = record.age || record.patient_info?.age || features.Age || features[7] || '-';
+                        const pregnancies = features.Pregnancies !== undefined ? features.Pregnancies : (features[0] || '-');
+                        const glucose = record.glucose || features.Glucose || features[1] || '-';
+                        const bloodPressure = features['Blood Pressure'] || features.BloodPressure || features[2] || '-';
+                        const skinThickness = features['Skin Thickness'] || features.SkinThickness || features[3] || '-';
+                        const insulin = features.Insulin || features[4] || '-';
+                        const bmi = record.bmi || features.BMI || features[5] || '-';
+                        const dpf = features['Diabetes Pedigree Function'] || features.DiabetesPedigreeFunction || features[6] || '-';
+                        
+                        const riskLevel = record.risk_level || (record.prediction?.includes('High') ? 'high' : 'low');
+                        const confidence = record.confidence || record.prediction_data?.confidence || '-';
+                        const reportId = record.id || record.firebase_id || '';
+
+                        row.innerHTML = `
+                            <td style="font-size: 0.85rem; color: #64748b;">${dateStr}</td>
+                            <td style="font-weight: 600; color: #1e293b;">${patientName}</td>
+                            <td style="text-align: center;">${age}</td>
+                            <td style="text-align: center;">${pregnancies}</td>
+                            <td style="text-align: center; font-weight: 500;">
+                                <span style="color: ${parseFloat(glucose) > 140 ? '#ef4444' : parseFloat(glucose) > 100 ? '#f59e0b' : '#10b981'};">
+                                    ${glucose}
+                                </span>
+                            </td>
+                            <td style="text-align: center; font-weight: 500;">
+                                <span style="color: ${parseFloat(bloodPressure) > 90 ? '#ef4444' : parseFloat(bloodPressure) > 80 ? '#f59e0b' : '#10b981'};">
+                                    ${bloodPressure}
+                                </span>
+                            </td>
+                            <td style="text-align: center;">${skinThickness}</td>
+                            <td style="text-align: center;">${insulin}</td>
+                            <td style="text-align: center; font-weight: 500;">
+                                <span style="color: ${parseFloat(bmi) > 30 ? '#ef4444' : parseFloat(bmi) > 25 ? '#f59e0b' : '#10b981'};">
+                                    ${typeof bmi === 'number' ? bmi.toFixed(1) : bmi}
+                                </span>
+                            </td>
+                            <td style="text-align: center; font-size: 0.85rem;">${typeof dpf === 'number' ? dpf.toFixed(3) : dpf}</td>
+                            <td style="text-align: center;">
+                                <span class="badge ${riskLevel === 'high' ? 'badge-high' : 'badge-low'}">
+                                    ${riskLevel === 'high' ? 'HIGH RISK' : 'LOW RISK'}
+                                </span>
+                            </td>
+                            <td style="text-align: center; font-weight: 600; color: #3b82f6;">
+                                ${typeof confidence === 'number' ? confidence.toFixed(1) + '%' : confidence}
+                            </td>
+                            <td style="text-align: center;">
+                                <button onclick="viewReport('${reportId}')" style="
+                                    background: linear-gradient(135deg, #3b82f6, #2563eb);
+                                    color: white;
+                                    border: none;
+                                    padding: 6px 12px;
+                                    border-radius: 6px;
+                                    cursor: pointer;
+                                    font-size: 0.85rem;
+                                    font-weight: 500;
+                                    transition: all 0.2s;
+                                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                            </td>
+                        `;
+
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    emptyState.style.display = 'block';
+                    dataTable.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error loading predictions:', error);
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
+            }
+        }
+
+        async function loadData() {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('dataTable').style.display = 'none';
+
+            await Promise.all([
+                loadUserProfile(),
+                loadStatistics(),
+                loadPredictions()
+            ]);
+        }
+        
+        // View report function
+        function viewReport(reportId) {
+            if (reportId) {
+                window.location.href = `/user/reports#report-${reportId}`;
+            }
+        }
+
+        // Load data on page load
+        window.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>

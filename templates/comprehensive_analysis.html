@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Health Analysis</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 40px;
+            color: white;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .analysis-section {
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border-left: 5px solid #2a5298;
+        }
+
+        .analysis-section h2 {
+            color: #1e3c72;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .analysis-section h3 {
+            color: #2a5298;
+            margin: 20px 0 15px 0;
+            font-size: 18px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+
+        .risk-indicator {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .risk-high {
+            background: #fee;
+            color: #e53e3e;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .risk-moderate {
+            background: #fef3cd;
+            color: #d97706;
+            border-left: 4px solid #d97706;
+        }
+
+        .risk-low {
+            background: #efe;
+            color: #38a169;
+            border-left: 4px solid #38a169;
+        }
+
+        .recommendations {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .recommendations ul {
+            margin-left: 20px;
+        }
+
+        .recommendations li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(42, 82, 152, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #1e3c72;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            font-size: 18px;
+            color: #1e3c72;
+        }
+
+        .loading i {
+            font-size: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .btn-group {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-file-medical-alt"></i> Comprehensive Health Analysis</h1>
+            <p>Advanced AI Medical Assessment System</p>
+        </div>
+
+        <div class="content" id="content">
+            <div class="loading">
+                <i class="fas fa-spinner"></i>
+                <p>Generating comprehensive analysis...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load comprehensive analysis on page load
+        window.onload = async function() {
+            await loadComprehensiveAnalysis();
+        };
+
+        async function loadComprehensiveAnalysis() {
+            try {
+                const response = await fetch('/api/comprehensive_analysis');
+                const data = await response.json();
+
+                if (data.success) {
+                    displayAnalysis(data.analysis);
+                } else {
+                    document.getElementById('content').innerHTML = `
+                        <div style="text-align: center; padding: 60px; color: #e53e3e;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 60px; margin-bottom: 20px;"></i>
+                            <h2>No Data Available</h2>
+                            <p>You need to complete at least one health assessment to view your comprehensive analysis.</p>
+                            <div class="btn-group" style="justify-content: center; margin-top: 30px;">
+                                <a href="/user/predict" class="btn btn-primary">
+                                    <i class="fas fa-heartbeat"></i> New Assessment
+                                </a>
+                                <a href="/user/dashboard" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading analysis:', error);
+                document.getElementById('content').innerHTML = `
+                    <div style="text-align: center; padding: 60px; color: #e53e3e;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 60px; margin-bottom: 20px;"></i>
+                        <h2>Error Loading Analysis</h2>
+                        <p>An error occurred while generating your health analysis.</p>
+                        <button onclick="location.reload()" class="btn btn-primary" style="margin-top: 20px;">
+                            <i class="fas fa-sync-alt"></i> Try Again
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function displayAnalysis(analysis) {
+            const riskLevel = analysis.risk_score >= 70 ? 'HIGH' : 
+                            analysis.risk_score >= 50 ? 'MODERATE' : 'LOW';
+            const riskClass = riskLevel === 'HIGH' ? 'risk-high' :
+                            riskLevel === 'MODERATE' ? 'risk-moderate' : 'risk-low';
+
+            // Determine glucose status
+            let glucoseStatus = 'Normal';
+            if (analysis.avg_glucose >= 126) glucoseStatus = 'Diabetic Range';
+            else if (analysis.avg_glucose >= 100) glucoseStatus = 'Prediabetic Range';
+
+            // Determine BMI category
+            let bmiCategory = 'Normal';
+            if (analysis.avg_bmi >= 30) bmiCategory = 'Obese';
+            else if (analysis.avg_bmi >= 25) bmiCategory = 'Overweight';
+            else if (analysis.avg_bmi < 18.5) bmiCategory = 'Underweight';
+
+            const content = `
+                <div class="analysis-section">
+                    <h2>PATIENT INFORMATION</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="label">Patient Name</div>
+                            <div class="value" style="font-size: 20px;">${analysis.patient_name}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Report Date</div>
+                            <div class="value" style="font-size: 20px;">${analysis.date}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Total Assessments</div>
+                            <div class="value">${analysis.total_predictions}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Average Confidence</div>
+                            <div class="value">${analysis.avg_confidence}%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analysis-section">
+                    <h2>1. OVERALL CLINICAL IMPRESSION</h2>
+                    <p style="line-height: 1.8; color: #333;">
+                        This patient's longitudinal diabetes risk assessment reveals a ${riskLevel.toLowerCase()}-risk metabolic health status based on ${analysis.total_predictions} assessments. 
+                        The patient has recorded ${analysis.high_risk_count} high-risk classifications (${analysis.high_risk_percentage.toFixed(1)}%) 
+                        and ${analysis.low_risk_count} low-risk classifications (${analysis.low_risk_percentage.toFixed(1)}%).
+                        Average fasting glucose levels (${analysis.avg_glucose} mg/dL) and BMI (${analysis.avg_bmi} kg/m²) categorize them as 
+                        <strong>${glucoseStatus.toLowerCase()}</strong> and <strong>${bmiCategory.toLowerCase()}</strong>, respectively.
+                    </p>
+                    <div class="risk-indicator ${riskClass}">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        Overall Risk Level: ${riskLevel} (Risk Score: ${analysis.risk_score}/100)
+                    </div>
+                </div>
+
+                <div class="analysis-section">
+                    <h2>2. KEY CLINICAL FINDINGS</h2>
+                    
+                    <h3><i class="fas fa-flask"></i> Glucose Metabolism Analysis</h3>
+                    <p style="line-height: 1.8; color: #333; margin-bottom: 15px;">
+                        The patient's average fasting glucose levels (<strong>${analysis.avg_glucose} mg/dL</strong>) fall within the <strong>${glucoseStatus.toLowerCase()}</strong> 
+                        according to the American Diabetes Association (ADA) guidelines. 
+                        ${analysis.avg_glucose >= 126 ? 'This indicates diabetes and requires immediate medical intervention.' :
+                          analysis.avg_glucose >= 100 ? 'This indicates impaired glucose regulation, increasing the risk of developing type 2 diabetes.' :
+                          'This indicates normal glucose regulation.'}
+                    </p>
+
+                    <h3><i class="fas fa-weight"></i> Weight Status and Cardiovascular Risk Factors</h3>
+                    <p style="line-height: 1.8; color: #333; margin-bottom: 15px;">
+                        The patient's BMI (<strong>${analysis.avg_bmi} kg/m²</strong>) categorizes them as <strong>${bmiCategory.toLowerCase()}</strong>.
+                        ${analysis.avg_bmi >= 30 ? 'This significantly increases the risk of cardiovascular disease, hypertension, and other metabolic comorbidities.' :
+                          analysis.avg_bmi >= 25 ? 'This moderately increases the risk of developing cardiovascular and metabolic conditions.' :
+                          'This is within the healthy weight range.'}
+                    </p>
+
+                    <h3><i class="fas fa-chart-line"></i> Clinical Parameters Summary</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="label">Average Glucose</div>
+                            <div class="value">${analysis.avg_glucose}</div>
+                            <small style="color: #666;">mg/dL</small>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Average BMI</div>
+                            <div class="value">${analysis.avg_bmi}</div>
+                            <small style="color: #666;">kg/m²</small>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Average BP</div>
+                            <div class="value">${analysis.avg_bp}</div>
+                            <small style="color: #666;">mmHg</small>
+                        </div>
+                        <div class="stat-card">
+                            <div class="label">Average Insulin</div>
+                            <div class="value">${analysis.avg_insulin}</div>
+                            <small style="color: #666;">µU/mL</small>
+                        </div>
+                    </div>
+
+                    <h3><i class="fas fa-heartbeat"></i> Pattern Recognition Across Multiple Assessments</h3>
+                    <p style="line-height: 1.8; color: #333;">
+                        The patient's risk classification frequency is <strong>${analysis.high_risk_percentage.toFixed(1)}% high risk</strong> 
+                        and <strong>${analysis.low_risk_percentage.toFixed(1)}% low risk</strong>.
+                        The model confidence (<strong>${analysis.avg_confidence}%</strong>) suggests that the risk assessment model is 
+                        ${analysis.avg_confidence >= 80 ? 'highly confident' : analysis.avg_confidence >= 60 ? 'moderately confident' : 'less confident'} 
+                        in its predictions.
+                    </p>
+                </div>
+
+                <div class="analysis-section">
+                    <h2>3. RISK STRATIFICATION</h2>
+                    <p style="line-height: 1.8; color: #333;">
+                        <strong>Medical Risk Score: ${analysis.risk_score}/100</strong>
+                    </p>
+                    <p style="line-height: 1.8; color: #333; margin-top: 15px;">
+                        <strong>Clinical Meaning:</strong> A Medical Risk Score of ${analysis.risk_score} indicates a 
+                        <strong>${riskLevel.toLowerCase()} risk</strong> of developing type 2 diabetes and associated metabolic comorbidities.
+                        ${analysis.risk_score >= 70 ? 'This warrants immediate intensive lifestyle modification and medical intervention.' :
+                          analysis.risk_score >= 50 ? 'This warrants lifestyle modification and close monitoring.' :
+                          'Continue maintaining healthy lifestyle habits and regular monitoring.'}
+                    </p>
+                </div>
+
+                <div class="analysis-section">
+                    <h2>4. EVIDENCE-BASED RECOMMENDATIONS</h2>
+                    
+                    <h3>A. IMMEDIATE ACTIONS (Next 2-4 weeks)</h3>
+                    <div class="recommendations">
+                        <ul>
+                            ${analysis.avg_glucose >= 100 ? '<li>Order an HbA1c test to assess long-term glycemic control</li>' : ''}
+                            ${analysis.risk_score >= 50 ? '<li>Consider a lipid panel to evaluate cardiovascular risk factors</li>' : ''}
+                            ${analysis.avg_bmi >= 25 ? '<li>Refer to a registered dietitian for personalized dietary counseling</li>' : ''}
+                            ${analysis.avg_glucose >= 126 ? '<li>Discuss medication options (e.g., metformin) with your healthcare provider</li>' : ''}
+                            <li>Schedule a comprehensive physical examination</li>
+                            <li>Begin daily health monitoring (glucose, weight, blood pressure)</li>
+                        </ul>
+                    </div>
+
+                    <h3>B. LIFESTYLE MEDICINE PRESCRIPTION</h3>
+                    <div class="recommendations">
+                        <ul>
+                            <li><strong>Dietary Modifications:</strong> ${analysis.avg_glucose >= 100 ? 'Reduce carbohydrate intake to 150g/day' : 'Maintain balanced diet with 45-60% calories from complex carbohydrates'}, focus on whole, unprocessed foods (glycemic index < 55)</li>
+                            <li><strong>Physical Activity:</strong> Engage in moderate-intensity exercise (FITT principle: 150 minutes/week, 3-4 times/week, 30-45 minutes/session)</li>
+                            <li><strong>Weight Management:</strong> ${analysis.avg_bmi >= 25 ? `Target BMI < 25 kg/m² and aim to lose ${Math.round((analysis.avg_bmi - 24.9) * 2)} kg over the next 3-6 months` : 'Maintain current healthy weight'}</li>
+                            <li><strong>Sleep Optimization:</strong> Aim for 7-8 hours of quality sleep per night</li>
+                            <li><strong>Stress Management:</strong> Practice stress-reducing techniques (mindfulness, meditation, yoga)</li>
+                            <li><strong>Hydration:</strong> Drink 8-10 glasses of water daily</li>
+                        </ul>
+                    </div>
+
+                    <h3>C. MONITORING PLAN</h3>
+                    <div class="recommendations">
+                        <ul>
+                            <li><strong>Follow-up Appointments:</strong> Every ${analysis.risk_score >= 70 ? '4-6 weeks' : '3-4 months'} to assess progress and adjust treatment plans</li>
+                            <li><strong>Self-Monitoring Parameters:</strong> Glucose levels (fasting), weight, physical activity, blood pressure</li>
+                            <li><strong>Target Goals:</strong> Fasting glucose < 100 mg/dL, BMI 18.5-24.9 kg/m², BP < 120/80 mmHg</li>
+                            <li><strong>Warning Signs:</strong> Seek urgent care if glucose > 140 mg/dL or symptoms of hyperglycemia develop</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="analysis-section">
+                    <h2>5. PATIENT EDUCATION & MOTIVATION</h2>
+                    <div class="recommendations">
+                        <ul>
+                            <li><strong>Understanding Risk:</strong> Your current metabolic health status ${analysis.risk_score >= 70 ? 'significantly increases' : analysis.risk_score >= 50 ? 'moderately increases' : 'slightly increases'} your risk of developing type 2 diabetes</li>
+                            <li><strong>Realistic Goals:</strong> Focus on ${analysis.risk_score >= 70 ? 'immediate lifestyle changes' : 'gradual improvements'} over the next 3-6 months</li>
+                            <li><strong>Self-Monitoring:</strong> Regular tracking of health metrics helps you stay accountable and motivated</li>
+                            <li><strong>Empowerment:</strong> Take an active role in your care and make informed decisions about your health</li>
+                            <li><strong>Support System:</strong> Consider joining a diabetes prevention program or support group</li>
+                        </ul>
+                    </div>
+                </div>
+
+                ${analysis.best_assessment ? `
+                <div class="analysis-section">
+                    <h2>6. BEST ASSESSMENT RECORD</h2>
+                    <p style="line-height: 1.8; color: #333;">
+                        Your best assessment was on <strong>${new Date(analysis.best_assessment.timestamp).toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'})}</strong> 
+                        with <strong>${typeof analysis.best_assessment.confidence === 'number' ? analysis.best_assessment.confidence.toFixed(2) : analysis.best_assessment.confidence}% confidence</strong> 
+                        and <strong>${analysis.best_assessment.result}</strong> classification. 
+                        This represents your healthiest reading! 🎉
+                    </p>
+                    <div class="risk-indicator risk-low">
+                        <i class="fas fa-trophy"></i> Keep working towards maintaining or improving this excellent result!
+                    </div>
+                </div>
+                ` : ''}
+
+                <div class="analysis-section">
+                    <h2>7. CLINICAL NOTES</h2>
+                    <div class="recommendations">
+                        <ul>
+                            <li><strong>Areas of Concern:</strong> ${analysis.avg_glucose >= 126 ? 'Diabetes, ' : analysis.avg_glucose >= 100 ? 'Prediabetes, ' : ''}${analysis.avg_bmi >= 30 ? 'Obesity, ' : analysis.avg_bmi >= 25 ? 'Overweight, ' : ''}${analysis.risk_score >= 70 ? 'High cardiovascular risk' : 'Metabolic health monitoring'}</li>
+                            <li><strong>Positive Prognostic Factors:</strong> ${analysis.low_risk_percentage >= 50 ? 'Majority low-risk assessments, ' : ''}${analysis.avg_confidence >= 70 ? 'High model confidence, ' : ''}Active health monitoring</li>
+                            <li><strong>Patient Compliance:</strong> Regular follow-up appointments and willingness to make lifestyle changes recommended</li>
+                            <li><strong>Next Appointment:</strong> Schedule follow-up in ${analysis.risk_score >= 70 ? '4-6 weeks' : '3-4 months'} to assess progress</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button onclick="window.print()" class="btn btn-primary">
+                        <i class="fas fa-print"></i> Print Report
+                    </button>
+                    <a href="/user/reports" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Reports
+                    </a>
+                    <a href="/user/dashboard" class="btn btn-secondary">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                </div>
+            `;
+
+            document.getElementById('content').innerHTML = content;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+Best Model: XGBoost
+Accuracy: 0.7273
+ROC-AUC: 0.8285
+
+Best Parameters:
+{'colsample_bytree': 0.8, 'learning_rate': 0.01, 'max_depth': 7, 'min_child_weight': 5, 'n_estimators': 100, 'subsample': 0.8}
+
+Feature Names:
+['Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI', 'DiabetesPedigreeFunction', 'Age']
