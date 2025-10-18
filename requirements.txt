@@ -13,7 +13,7 @@ firebase-admin==6.5.0
 
 # LLM integration
 langchain==0.2.12
-langchain-core==0.2.26
+langchain-core==0.2.27
 langchain-community==0.2.10
 langchain-groq==0.1.6
 
