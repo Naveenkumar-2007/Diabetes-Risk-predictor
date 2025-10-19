@@ -245,7 +245,7 @@
                     <div class="result-container" id="resultContainer">
                         <!-- Results will be dynamically inserted here -->
                     </div>
-                    
+
                     <div class="button-group" style="margin-top: 20px;">
                         <button type="button" class="btn btn-success" id="generateReportBtn" 
                                 onclick="generateReport()">
@@ -267,10 +267,56 @@
                 <h2><i class="fas fa-file-medical-alt"></i> AI Doctor Report</h2>
                 <span class="close" onclick="closeModal()">&times;</span>
             </div>
-            <div class="modal-body" id="reportContent">
-                <div class="loading">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p>Generating comprehensive medical report...</p>
+            <div class="modal-body">
+                <div class="modal-tab-bar">
+                    <button class="modal-tab active" data-tab="report">Medical Report</button>
+                    <button class="modal-tab" data-tab="comparison">Trend Comparison</button>
+                </div>
+
+                <div id="reportTabPane">
+                    <div id="reportContent">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Generating comprehensive medical report...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="comparisonTabPane" style="display: none;">
+                    <h3 class="comparison-heading"><i class="fas fa-chart-line"></i> Trend Comparison & Clinical Insight</h3>
+                    <p class="comparison-subtitle">Select two or three past assessments to compare against the latest prediction.</p>
+
+                    <div class="comparison-controls">
+                        <label for="pastPredictionsSelect">History (oldest first)</label>
+                        <select id="pastPredictionsSelect" multiple size="6"></select>
+                        <small class="comparison-hint">Hold Ctrl (Windows) or Cmd (Mac) to select multiple entries.</small>
+                        <button type="button" class="btn btn-primary" id="comparePredictionsBtn">
+                            <i class="fas fa-balance-scale"></i> Compare Selected
+                        </button>
+                        <div class="comparison-status" id="comparisonStatus"></div>
+                    </div>
+
+                    <div class="graph-grid">
+                        <div class="graph-card">
+                            <h4>Current vs Normal Limits</h4>
+                            <img id="currentVsNormalImg" alt="Current vs normal clinical limits" />
+                        </div>
+                        <div class="graph-card" id="historicalGraphCard" style="display: none;">
+                            <h4>Historical Comparison</h4>
+                            <img id="comparisonGraphImg" alt="Historical comparison chart" />
+                        </div>
+                    </div>
+
+                    <div class="explanation-card" id="groqExplanationCard" style="display: none;">
+                        <h4><i class="fas fa-user-md"></i> Doctor Insight</h4>
+                        <div id="groqExplanation" class="explanation-text"></div>
+                    </div>
+
+                    <div class="button-group" style="justify-content: flex-start; gap: 12px;">
+                        <button type="button" class="btn btn-success" id="downloadComparisonPdf" style="display: none;">
+                            <i class="fas fa-file-download"></i> Download Comparison PDF
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer" id="reportFooter" style="display: none;">

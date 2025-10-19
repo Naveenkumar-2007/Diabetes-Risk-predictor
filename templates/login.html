@@ -6,6 +6,13 @@
     <title>Login - Diabetes Health Predictor</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% if google_login_enabled %}
+    <meta name="google-signin-client_id" content="{{ google_client_id }}">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    {% endif %}
+    {% if google_login_enabled %}
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    {% endif %}
     <style>
         * {
             margin: 0;
@@ -130,6 +137,24 @@
             color: #94a3b8;
         }
 
+        .forgot-link {
+            margin-top: 10px;
+            text-align: right;
+        }
+
+        .forgot-link a {
+            color: #0e7490;
+            font-size: 13px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .forgot-link a:hover {
+            color: #0891b2;
+            text-decoration: underline;
+        }
+
         .button {
             width: 100%;
             padding: 16px;
@@ -183,6 +208,12 @@
             font-size: 13px;
             position: relative;
             font-weight: 500;
+        }
+
+        .google-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 16px;
         }
 
         .signup-link {
@@ -254,11 +285,31 @@
                        placeholder="Enter your password" autocomplete="current-password">
             </div>
 
+            <div class="forgot-link">
+                <a href="/forgot-password">Forgot password?</a>
+            </div>
+
             <button type="submit" class="button" id="loginBtn">
                 <i class="fas fa-sign-in-alt"></i>
                 <span>Login to Dashboard</span>
             </button>
         </form>
+
+        {% if google_login_enabled %}
+        <div class="divider" style="margin-top: 26px;">
+            <span>Or continue with</span>
+        </div>
+        <div class="google-container" id="googleSignInSection">
+            <div id="googleSignInButton"></div>
+        </div>
+        {% else %}
+        <div class="divider" style="margin-top: 26px;">
+            <span>Google sign-in unavailable</span>
+        </div>
+        <p class="subtitle" style="font-size: 13px; margin-top: -12px;">
+            Configure your Google client credentials to enable one-tap login.
+        </p>
+        {% endif %}
 
         <div class="divider">
             <span>Don't have an account?</span>
@@ -326,6 +377,84 @@
                 loginBtn.textContent = 'Login';
             }
         });
+
     </script>
+    {% if google_login_enabled %}
+    <script>
+        const googleClientId = '{{ google_client_id }}';
+
+        window.handleGoogleCredential = async (googleResponse) => {
+            const credential = googleResponse && googleResponse.credential;
+
+            if (!credential) {
+                showAlert('Google sign-in failed. Please try again.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/login/google', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ credential })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(data.message || 'Login successful!', 'success');
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 400);
+                } else {
+                    showAlert(data.message || 'Google login failed');
+                }
+            } catch (error) {
+                console.error('Google login error:', error);
+                showAlert('Google sign-in is currently unavailable. Please try again later.');
+            }
+        };
+
+        // Handle Google sign-in errors
+        window.addEventListener('error', function(event) {
+            if (event.message && event.message.includes('invalid_client')) {
+                console.error('Google OAuth configuration error: Authorized origins not configured');
+                showAlert('Google sign-in configuration error. Please contact the administrator.');
+            }
+        }, true);
+
+        function renderGoogleButton(attempt = 0) {
+            const maxAttempts = 20;
+            if (!(window.google && window.google.accounts && window.google.accounts.id)) {
+                if (attempt < maxAttempts) {
+                    setTimeout(() => renderGoogleButton(attempt + 1), 150);
+                } else {
+                    console.warn('Google Identity Services script failed to load.');
+                }
+                return;
+            }
+
+            window.google.accounts.id.initialize({
+                client_id: googleClientId,
+                callback: handleGoogleCredential,
+                ux_mode: 'popup'
+            });
+
+            const buttonContainer = document.getElementById('googleSignInButton');
+            if (buttonContainer) {
+                window.google.accounts.id.renderButton(buttonContainer, {
+                    theme: 'outline',
+                    size: 'large',
+                    width: 260,
+                    shape: 'pill',
+                    text: 'signin_with'
+                });
+            }
+        }
+
+        window.addEventListener('load', () => renderGoogleButton());
+    </script>
+    {% endif %}
 </body>
 </html>

@@ -544,6 +544,108 @@ body {
     font-weight: 500;
 }
 
+.comparison-section {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.comparison-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+}
+
+.comparison-subtitle {
+    color: var(--text-gray);
+    margin-bottom: var(--spacing-md);
+}
+
+.comparison-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: var(--light-bg);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.comparison-controls select {
+    width: 100%;
+    min-height: 180px;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    font-family: var(--font-family);
+    font-size: 0.95rem;
+    background: var(--white);
+}
+
+.comparison-hint {
+    font-size: 0.85rem;
+    color: var(--text-gray);
+}
+
+.comparison-status {
+    min-height: 1.2rem;
+    font-size: 0.9rem;
+    color: var(--text-gray);
+}
+
+.graph-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
+
+.graph-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    padding: var(--spacing-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.graph-card h4 {
+    margin-bottom: 0.75rem;
+    color: var(--text-dark);
+}
+
+.graph-card img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--white);
+}
+
+.explanation-card {
+    margin-top: var(--spacing-lg);
+    background: linear-gradient(135deg, #e0f2fe 0%, #e7f5ff 100%);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    border: 1px solid var(--primary-light);
+    box-shadow: var(--shadow-sm);
+}
+
+.explanation-card h4 {
+    margin-bottom: 0.75rem;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.explanation-text {
+    color: var(--text-dark);
+    line-height: 1.7;
+    white-space: pre-line;
+}
+
 /* ========================================
    PATIENT SUMMARY
    ======================================== */
@@ -618,6 +720,42 @@ body {
     flex-direction: column;
     animation: slideUp 0.3s ease;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-tab-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.modal-tab {
+    background: rgba(59, 130, 246, 0.12);
+    border: none;
+    border-radius: 999px;
+    padding: 0.5rem 1.25rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.modal-tab:hover {
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.modal-tab.active {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: var(--white);
+    box-shadow: var(--shadow-sm);
+}
+
+.comparison-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
 }
 
 @keyframes slideUp {

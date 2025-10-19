@@ -8,16 +8,32 @@ import pickle
 import numpy as np
 import os
 import re
+import matplotlib
+
+matplotlib.use('Agg')  # Use non-GUI backend for server rendering
+import matplotlib.pyplot as plt
+
+from uuid import uuid4
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 import json
 from datetime import datetime
 # Import Firebase configuration
-from firebase_config import save_patient_data, get_patient_history, get_statistics
+from firebase_config import (
+    save_patient_data,
+    get_patient_history,
+    get_statistics,
+    get_prediction_by_id,
+    get_predictions_by_ids,
+    update_prediction_record,
+    append_prediction_comparison
+)
 # Import authentication
 from auth import (
-    create_user, authenticate_user, login_required, admin_required,
+    create_user, authenticate_user, authenticate_google_user,
+    initiate_password_reset, reset_password_with_token, validate_password_reset_token,
+    login_required, admin_required,
     get_user_predictions, get_user_statistics, change_password, update_user_profile
 )
 
@@ -49,6 +65,11 @@ except Exception as e:
 # ------------------- LOAD GROQ LLM -------------------
 load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
+google_client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+google_client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "")
+
+app.config['GOOGLE_CLIENT_ID'] = google_client_id
+app.config['GOOGLE_CLIENT_SECRET'] = google_client_secret
 
 if not groq_api_key:
     print("⚠️ Warning: GROQ_API_KEY not found in .env file!")
@@ -65,6 +86,363 @@ else:
         print(f"❌ Error initializing Groq LLM: {e}")
         llm = None
 
+FEATURE_INDEX_MAP = {
+    'Pregnancies': 0,
+    'Glucose': 1,
+    'BloodPressure': 2,
+    'SkinThickness': 3,
+    'Insulin': 4,
+    'BMI': 5,
+    'DiabetesPedigreeFunction': 6,
+    'Age': 7
+}
+
+NORMAL_LIMITS = {
+    'Glucose': 100.0,
+    'Blood Pressure': 80.0,
+    'BMI': 24.9,
+    'Insulin': 166.0
+}
+
+COMPARISON_PARAMETERS = [
+    ('Glucose', 'Glucose', 'Glucose (mg/dL)'),
+    ('BloodPressure', 'Blood Pressure', 'Blood Pressure (mmHg)'),
+    ('BMI', 'BMI', 'BMI (kg/m²)'),
+    ('Insulin', 'Insulin', 'Insulin (μU/mL)')
+]
+
+
+def _sanitize_identifier(value):
+    """Normalize identifiers for filesystem usage"""
+    if not value:
+        return 'anonymous'
+    return re.sub(r'[^A-Za-z0-9_-]', '_', str(value))
+
+
+def _ensure_report_directory(user_id):
+    """Create and return filesystem and relative paths for report assets"""
+    patient_folder = _sanitize_identifier(user_id)
+    base_dir = os.path.join(app.root_path, 'static', 'reports')
+    os.makedirs(base_dir, exist_ok=True)
+    patient_dir = os.path.join(base_dir, patient_folder)
+    os.makedirs(patient_dir, exist_ok=True)
+    relative_dir = os.path.join('reports', patient_folder)
+    return patient_dir, relative_dir
+
+
+def _safe_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def extract_parameter_value(record, key):
+    """Best-effort extraction of a numeric parameter from stored prediction data"""
+    if not isinstance(record, dict):
+        return None
+
+    candidates = [
+        key,
+        key.replace(' ', ''),
+        key.replace('_', ''),
+        key.replace('BloodPressure', 'Blood Pressure') if 'BloodPressure' in key else key
+    ]
+
+    for candidate in candidates:
+        if candidate in record:
+            value = _safe_float(record.get(candidate))
+            if value is not None:
+                return value
+
+    medical_data = record.get('medical_data')
+    if isinstance(medical_data, dict):
+        for candidate in candidates:
+            if candidate in medical_data:
+                value = _safe_float(medical_data.get(candidate))
+                if value is not None:
+                    return value
+
+    features = record.get('features')
+    if isinstance(features, (list, tuple)):
+        idx = FEATURE_INDEX_MAP.get(key)
+        if idx is not None and idx < len(features):
+            value = _safe_float(features[idx])
+            if value is not None:
+                return value
+    return None
+
+
+def parse_prediction_datetime(record):
+    """Parse a prediction's timestamp into a datetime object"""
+    if not isinstance(record, dict):
+        return datetime.now()
+
+    timestamp = record.get('timestamp')
+    if isinstance(timestamp, str):
+        try:
+            return datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        except ValueError:
+            pass
+
+    created_at = record.get('created_at')
+    if isinstance(created_at, (int, float)):
+        try:
+            return datetime.fromtimestamp(created_at)
+        except (ValueError, OSError):
+            pass
+
+    date_part = record.get('date')
+    time_part = record.get('time')
+    if date_part:
+        try:
+            if time_part:
+                return datetime.strptime(f"{date_part} {time_part}", '%Y-%m-%d %H:%M:%S')
+            return datetime.strptime(date_part, '%Y-%m-%d')
+        except ValueError:
+            pass
+
+    return datetime.now()
+
+
+def format_prediction_label(record):
+    return parse_prediction_datetime(record).strftime('%b %d, %Y %I:%M %p')
+
+
+def generate_current_vs_normal_chart(medical_data, user_id, prediction_id):
+    """Create bar chart comparing patient metrics against normal limits"""
+    if not isinstance(medical_data, dict):
+        return None, None
+
+    patient_dir, relative_dir = _ensure_report_directory(user_id)
+    filename = f"{prediction_id}_current_vs_normal.png"
+    filepath = os.path.join(patient_dir, filename)
+
+    categories = []
+    patient_values = []
+    normal_values = []
+
+    for label, limit in NORMAL_LIMITS.items():
+        raw_value = medical_data.get(label)
+        if raw_value is None and label == 'Blood Pressure':
+            raw_value = medical_data.get('BloodPressure')
+        value = _safe_float(raw_value) or 0.0
+        categories.append(label)
+        normal_values.append(limit)
+        patient_values.append(value)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    index = np.arange(len(categories))
+    bar_width = 0.38
+    ax.bar(index - bar_width / 2, normal_values, bar_width, label='Normal Upper Limit', color='#34d399')
+    ax.bar(index + bar_width / 2, patient_values, bar_width, label='Patient Value', color='#2563eb')
+    ax.set_xticks(index)
+    ax.set_xticklabels(categories)
+    ax.set_ylabel('Measured Value')
+    ax.set_title('Current Visit: Patient Values vs Normal Clinical Limits')
+    ax.legend()
+    ax.grid(axis='y', linestyle='--', linewidth=0.5, alpha=0.4)
+    fig.tight_layout()
+    fig.savefig(filepath, dpi=200)
+    plt.close(fig)
+
+    relative_path = os.path.join(relative_dir, filename).replace('\\', '/')
+    return relative_path, url_for('static', filename=relative_path)
+
+
+def generate_history_comparison_chart(predictions, user_id, analysis_id):
+    """Create line chart showing parameter changes across selected predictions"""
+    if not predictions:
+        return None, None
+
+    patient_dir, relative_dir = _ensure_report_directory(user_id)
+    filename = f"{analysis_id}_history_comparison.png"
+    filepath = os.path.join(patient_dir, filename)
+
+    ordered_predictions = sorted(predictions, key=parse_prediction_datetime)
+    x_positions = np.arange(len(ordered_predictions))
+    x_labels = [format_prediction_label(pred) for pred in ordered_predictions]
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+
+    for db_key, _, display_label in COMPARISON_PARAMETERS:
+        raw_values = [extract_parameter_value(pred, db_key) for pred in ordered_predictions]
+        if all(value is None for value in raw_values):
+            continue
+        plot_values = [value if value is not None else np.nan for value in raw_values]
+        ax.plot(x_positions, plot_values, marker='o', linewidth=2, label=display_label)
+
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(x_labels, rotation=20, ha='right')
+    ax.set_ylabel('Measured Value')
+    ax.set_title('Selected Prediction History')
+    ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.3)
+    ax.legend(loc='best')
+    fig.tight_layout()
+    fig.savefig(filepath, dpi=220)
+    plt.close(fig)
+
+    relative_path = os.path.join(relative_dir, filename).replace('\\', '/')
+    return relative_path, url_for('static', filename=relative_path)
+
+
+def build_comparison_prompt(predictions):
+    """Create LLM prompt describing patient history for Groq analysis"""
+    history_lines = []
+    ordered = sorted(predictions, key=parse_prediction_datetime)
+
+    for idx, record in enumerate(ordered, start=1):
+        timestamp_label = format_prediction_label(record)
+        metrics = []
+        for db_key, _, display_label in COMPARISON_PARAMETERS:
+            value = extract_parameter_value(record, db_key)
+            if value is not None:
+                metrics.append(f"{display_label.split('(')[0].strip()}: {round(value, 2)}")
+        risk = record.get('prediction') or record.get('result') or record.get('risk_level', '')
+        confidence = record.get('confidence')
+        risk_text = f" | Result: {risk}" if risk else ''
+        if confidence:
+            risk_text += f" (Confidence {round(float(confidence), 1)}%)"
+        metrics_text = '; '.join(metrics)
+        history_lines.append(f"{idx}. {timestamp_label} — {metrics_text}{risk_text}")
+
+    history_block = "\n".join(history_lines)
+
+    return f"""
+You are Dr. Elena Martinez, a board-certified endocrinologist. Review the patient's diabetes-related assessments listed below.
+
+Patient visits (oldest to most recent):
+{history_block}
+
+Summarize in three sections titled Improvements, Concerns, and Recommendations. For each section, provide up to three concise bullet points in plain language that a patient can understand. Reference trends instead of repeating raw numbers. Keep the response under 180 words and maintain a supportive clinical tone without disclaimers.
+"""
+
+
+def generate_comparison_pdf(current_prediction, comparison_entry):
+    """Create a PDF report combining Groq insights and generated charts"""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        topMargin=0.75 * inch,
+        bottomMargin=0.6 * inch,
+        leftMargin=0.75 * inch,
+        rightMargin=0.75 * inch
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'ComparisonTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        textColor=colors.HexColor('#1f2937'),
+        alignment=1,
+        spaceAfter=12
+    )
+
+    section_title = ParagraphStyle(
+        'SectionTitle',
+        parent=styles['Heading3'],
+        textColor=colors.HexColor('#2563eb'),
+        spaceBefore=6,
+        spaceAfter=6
+    )
+
+    body_style = ParagraphStyle(
+        'Body',
+        parent=styles['BodyText'],
+        leading=14,
+        fontSize=11
+    )
+
+    story = []
+
+    patient_name = current_prediction.get('patient_name', 'Patient')
+    story.append(Paragraph('Diabetes Trend Comparison', title_style))
+    story.append(Paragraph(f"Patient: <b>{patient_name}</b>", body_style))
+    latest_result = current_prediction.get('prediction') or current_prediction.get('result', 'N/A')
+    story.append(Paragraph(f"Latest Assessment: {latest_result}", body_style))
+    story.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y %I:%M %p')}", body_style))
+    story.append(Spacer(1, 0.25 * inch))
+
+    story.append(Paragraph('Groq Clinical Summary', section_title))
+    explanation = comparison_entry.get('groq_explanation', 'No analysis available.')
+    for paragraph in explanation.split('\n'):
+        if paragraph.strip():
+            story.append(Paragraph(paragraph.strip(), body_style))
+            story.append(Spacer(1, 0.08 * inch))
+
+    selected = comparison_entry.get('selected_predictions', [])
+    if selected:
+        story.append(Spacer(1, 0.15 * inch))
+        story.append(Paragraph('Compared Visits', section_title))
+        table_data = [['Visit', 'Glucose', 'Blood Pressure', 'BMI', 'Insulin', 'Risk / Confidence']]
+        for item in selected:
+            def format_cell(value):
+                if isinstance(value, str):
+                    return value
+                numeric = _safe_float(value)
+                return f"{numeric:.2f}" if numeric is not None else '—'
+
+            confidence_value = item.get('confidence', '—')
+            if isinstance(confidence_value, str):
+                confidence_display = confidence_value if confidence_value != '—' else '—'
+            else:
+                confidence_numeric = _safe_float(confidence_value)
+                confidence_display = f"{confidence_numeric:.1f}%" if confidence_numeric is not None else '—'
+
+            table_data.append([
+                item.get('label', 'Visit'),
+                format_cell(item.get('Glucose', '—')),
+                format_cell(item.get('BloodPressure', '—')),
+                format_cell(item.get('BMI', '—')),
+                format_cell(item.get('Insulin', '—')),
+                f"{item.get('result', 'N/A')} ({confidence_display})"
+            ])
+
+        table = Table(table_data, hAlign='LEFT')
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563eb')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8fafc')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+            ('ALIGN', (1, 1), (-1, -1), 'CENTER')
+        ]))
+        story.append(table)
+
+    story.append(Spacer(1, 0.25 * inch))
+
+    graph_entries = []
+    current_relative = current_prediction.get('current_vs_normal_graph_path')
+    if current_relative:
+        graph_entries.append(('Current vs Normal', current_relative))
+
+    comparison_relative = comparison_entry.get('graph_relative_path')
+    if comparison_relative:
+        graph_entries.append(('Historical Comparison', comparison_relative))
+
+    for title, relative_path in graph_entries:
+        absolute_path = os.path.join(app.root_path, 'static', relative_path.replace('/', os.sep))
+        if os.path.exists(absolute_path):
+            story.append(Paragraph(title, section_title))
+            story.append(Image(absolute_path, width=6.0 * inch, height=3.3 * inch))
+            story.append(Spacer(1, 0.2 * inch))
+
+    doc.build(story)
+    buffer.seek(0)
+
+    filename = f"comparison_report_{_sanitize_identifier(patient_name)}_{comparison_entry.get('analysis_id', 'analysis')}.pdf"
+    return buffer, filename
+
 # ------------------- AUTHENTICATION ROUTES -------------------
 
 @app.route('/')
@@ -75,7 +453,11 @@ def home():
             return redirect(url_for('admin_dashboard'))
         # Redirect to prediction page first (hospital theme)
         return redirect(url_for('user_predict_page'))
-    return render_template('landing.html')
+    return render_template(
+        'landing.html',
+        google_client_id=google_client_id,
+        google_login_enabled=bool(google_client_id)
+    )
 
 
 @app.route('/login')
@@ -85,7 +467,11 @@ def login_page():
         if session.get('role') == 'admin':
             return redirect(url_for('admin_dashboard'))
         return redirect(url_for('user_dashboard'))
-    return render_template('login.html')
+    return render_template(
+        'login.html',
+        google_client_id=google_client_id,
+        google_login_enabled=bool(google_client_id)
+    )
 
 
 @app.route('/register')
@@ -94,6 +480,41 @@ def register_page():
     if 'user_id' in session:
         return redirect(url_for('user_dashboard'))
     return render_template('register.html')
+
+
+@app.route('/forgot-password')
+def forgot_password_page():
+    """Render forgot password page"""
+    if 'user_id' in session:
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('user_dashboard'))
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset-password')
+def reset_password_page():
+    """Render reset password form when token is provided"""
+    if 'user_id' in session:
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('user_dashboard'))
+
+    token = request.args.get('token', '').strip()
+    token_valid = False
+    status_message = "Invalid or expired reset link"
+
+    if token:
+        token_valid, status_message, _ = validate_password_reset_token(token)
+        if token_valid:
+            status_message = "Enter a new password to secure your account."
+
+    return render_template(
+        'reset_password.html',
+        token=token,
+        token_valid=token_valid,
+        status_message=status_message
+    )
 
 
 @app.route('/api/register', methods=['POST'])
@@ -175,6 +596,7 @@ def api_login():
             session['username'] = user_data['username']
             session['full_name'] = user_data['full_name']
             session['role'] = user_data['role']
+            session['email'] = user_data.get('email')
             session.permanent = True
             
             # Redirect based on role
@@ -203,11 +625,123 @@ def api_login():
         }), 500
 
 
+@app.route('/api/login/google', methods=['POST'])
+def api_login_google():
+    """Handle Google Sign-In login"""
+    try:
+        data = request.json or {}
+        credential = data.get('credential') or data.get('id_token')
+
+        success, message, user_data = authenticate_google_user(credential)
+
+        if success:
+            session['user_id'] = user_data['user_id']
+            session['username'] = user_data['username']
+            session['full_name'] = user_data['full_name']
+            session['role'] = user_data['role']
+            session['email'] = user_data.get('email')
+            session.permanent = True
+
+            if user_data['role'] == 'admin':
+                redirect_url = url_for('admin_dashboard')
+            else:
+                redirect_url = url_for('user_predict_page')
+
+            return jsonify({
+                'success': True,
+                'message': message,
+                'redirect': redirect_url,
+                'role': user_data['role']
+            })
+
+        status_code = 400 if credential else 401
+        return jsonify({
+            'success': False,
+            'message': message or 'Google login failed'
+        }), status_code
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Google login error: {str(e)}'
+        }), 500
+
+
 @app.route('/logout')
 def logout():
     """Handle user logout"""
     session.clear()
     return redirect(url_for('home'))
+
+
+@app.route('/api/forgot-password', methods=['POST'])
+def api_forgot_password():
+    """Trigger password reset email"""
+    try:
+        data = request.json or {}
+        email = (data.get('email') or '').strip()
+
+        if not email:
+            return jsonify({
+                'success': False,
+                'message': 'Email is required'
+            }), 400
+
+        base_url = os.getenv('APP_BASE_URL') or request.url_root.rstrip('/')
+        success, message = initiate_password_reset(email, base_url)
+
+        status_code = 200 if success else 400
+        return jsonify({
+            'success': success,
+            'message': message
+        }), status_code
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Forgot password error: {str(e)}'
+        }), 500
+
+
+@app.route('/api/reset-password', methods=['POST'])
+def api_reset_password():
+    """Handle password reset submission"""
+    try:
+        data = request.json or {}
+        token = (data.get('token') or '').strip()
+        password = (data.get('password') or '').strip()
+        confirm_password = (data.get('confirm_password') or data.get('confirmPassword') or '').strip()
+
+        if not token:
+            return jsonify({
+                'success': False,
+                'message': 'Reset token is required'
+            }), 400
+
+        if not password or not confirm_password:
+            return jsonify({
+                'success': False,
+                'message': 'Please provide and confirm your new password'
+            }), 400
+
+        if password != confirm_password:
+            return jsonify({
+                'success': False,
+                'message': 'Passwords do not match'
+            }), 400
+
+        success, message = reset_password_with_token(token, password)
+        status_code = 200 if success else 400
+        return jsonify({
+            'success': success,
+            'message': message
+        }), status_code
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Password reset error: {str(e)}'
+        }), 500
 
 
 # ------------------- USER DASHBOARD ROUTES -------------------
@@ -916,7 +1450,7 @@ def predict():
             }
         }
         
-        # Save to Firebase with user_id
+        # Save to Firebase with user_id and generate visual assets
         try:
             prediction_data = {
                 'prediction': result,
@@ -929,6 +1463,28 @@ def predict():
             if firebase_doc_id:
                 response_data['firebase_id'] = firebase_doc_id
                 print(f"✅ Data saved to Firebase with ID: {firebase_doc_id}")
+
+                try:
+                    graph_path, graph_url = generate_current_vs_normal_chart(
+                        response_data.get('medical_data', {}),
+                        user_id,
+                        firebase_doc_id
+                    )
+                    if graph_path and graph_url:
+                        response_data.setdefault('graphs', {})['current_vs_normal'] = {
+                            'relative_path': graph_path,
+                            'url': graph_url
+                        }
+                        update_prediction_record(
+                            firebase_doc_id,
+                            {
+                                'current_vs_normal_graph_path': graph_path,
+                                'current_vs_normal_graph_url': graph_url
+                            },
+                            user_id=user_id
+                        )
+                except Exception as chart_error:
+                    print(f"⚠️ Unable to generate current vs normal chart: {chart_error}")
         except Exception as firebase_error:
             print(f"⚠️ Firebase save failed (non-critical): {firebase_error}")
             # Continue without Firebase - app works without it
@@ -940,6 +1496,216 @@ def predict():
             'success': False,
             'error': f'Prediction error: {str(e)}'
         }), 500
+
+
+@app.route('/prediction/analysis', methods=['POST'])
+@login_required
+def analyze_prediction_trends():
+    """Generate comparative insights across past predictions using Groq"""
+    try:
+        if llm is None:
+            return jsonify({
+                'success': False,
+                'error': 'AI analysis service is unavailable. Please configure GROQ_API_KEY.'
+            }), 503
+
+        payload = request.json or {}
+        current_prediction_id = payload.get('current_prediction_id')
+        past_prediction_ids = payload.get('past_prediction_ids') or []
+
+        if not current_prediction_id:
+            return jsonify({'success': False, 'error': 'current_prediction_id is required'}), 400
+
+        if not isinstance(past_prediction_ids, list):
+            return jsonify({'success': False, 'error': 'past_prediction_ids must be a list'}), 400
+
+        if len(past_prediction_ids) < 2 or len(past_prediction_ids) > 3:
+            return jsonify({
+                'success': False,
+                'error': 'Select 2 or 3 past predictions for comparison'
+            }), 400
+
+        user_id = session.get('user_id')
+        is_admin = session.get('role') == 'admin'
+
+        target_user_id = user_id
+        if is_admin and payload.get('user_id'):
+            target_user_id = payload.get('user_id')
+
+        comparison_ids = past_prediction_ids + [current_prediction_id]
+        predictions_map = get_predictions_by_ids(comparison_ids)
+
+        current_prediction = predictions_map.get(current_prediction_id)
+        if not current_prediction:
+            current_prediction = get_prediction_by_id(current_prediction_id)
+            if current_prediction:
+                predictions_map[current_prediction_id] = current_prediction
+
+        if not current_prediction:
+            return jsonify({'success': False, 'error': 'Current prediction not found'}), 404
+
+        owner_id = current_prediction.get('user_id', 'anonymous')
+        if not is_admin and owner_id != user_id:
+            return jsonify({'success': False, 'error': 'Unauthorized access to prediction data'}), 403
+
+        resolved_predictions = []
+        for pred_id in comparison_ids:
+            prediction = predictions_map.get(pred_id)
+            if not prediction:
+                return jsonify({
+                    'success': False,
+                    'error': f'Prediction {pred_id} not found'
+                }), 404
+
+            if not is_admin and prediction.get('user_id', owner_id) != owner_id:
+                return jsonify({
+                    'success': False,
+                    'error': 'Prediction ownership mismatch'
+                }), 403
+
+            prediction['id'] = pred_id
+            resolved_predictions.append(prediction)
+
+        analysis_id = f"analysis_{uuid4().hex}"
+
+        # Ensure current vs normal chart exists for legacy predictions
+        if not current_prediction.get('current_vs_normal_graph_path'):
+            fallback_medical = {
+                'Glucose': extract_parameter_value(current_prediction, 'Glucose') or 0.0,
+                'Blood Pressure': extract_parameter_value(current_prediction, 'BloodPressure') or 0.0,
+                'BMI': extract_parameter_value(current_prediction, 'BMI') or 0.0,
+                'Insulin': extract_parameter_value(current_prediction, 'Insulin') or 0.0
+            }
+            graph_path, graph_url = generate_current_vs_normal_chart(
+                fallback_medical,
+                owner_id,
+                current_prediction_id
+            )
+            if graph_path and graph_url:
+                current_prediction['current_vs_normal_graph_path'] = graph_path
+                current_prediction['current_vs_normal_graph_url'] = graph_url
+                update_prediction_record(
+                    current_prediction_id,
+                    {
+                        'current_vs_normal_graph_path': graph_path,
+                        'current_vs_normal_graph_url': graph_url
+                    },
+                    user_id=owner_id
+                )
+
+        comparison_path, comparison_url = generate_history_comparison_chart(
+            resolved_predictions,
+            owner_id,
+            analysis_id
+        )
+
+        if not comparison_path or not comparison_url:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to generate comparison chart'
+            }), 500
+
+        prompt = build_comparison_prompt(resolved_predictions)
+        groq_response = llm.invoke(prompt)
+        explanation_text = getattr(groq_response, 'content', str(groq_response))
+
+        ordered_predictions = sorted(resolved_predictions, key=parse_prediction_datetime)
+        summary_rows = []
+
+        for record in ordered_predictions:
+            def format_metric(metric_key):
+                value = extract_parameter_value(record, metric_key)
+                numeric = _safe_float(value)
+                return round(numeric, 2) if numeric is not None else '—'
+
+            confidence_numeric = _safe_float(record.get('confidence'))
+
+            summary_rows.append({
+                'id': record.get('id'),
+                'label': format_prediction_label(record),
+                'Glucose': format_metric('Glucose'),
+                'BloodPressure': format_metric('BloodPressure'),
+                'BMI': format_metric('BMI'),
+                'Insulin': format_metric('Insulin'),
+                'result': record.get('prediction') or record.get('result', 'N/A'),
+                'confidence': round(confidence_numeric, 2) if confidence_numeric is not None else '—'
+            })
+
+        comparison_entry = {
+            'analysis_id': analysis_id,
+            'created_at': datetime.now().isoformat(),
+            'current_prediction_id': current_prediction_id,
+            'past_prediction_ids': past_prediction_ids,
+            'graph_relative_path': comparison_path,
+            'graph_url': comparison_url,
+            'groq_explanation': explanation_text,
+            'selected_predictions': summary_rows
+        }
+
+        append_prediction_comparison(current_prediction_id, comparison_entry, user_id=owner_id)
+
+        download_url = url_for(
+            'download_comparison_report',
+            prediction_id=current_prediction_id,
+            analysis_id=analysis_id
+        )
+
+        response_payload = {
+            'success': True,
+            'analysis_id': analysis_id,
+            'explanation': explanation_text,
+            'comparison_graph_url': comparison_url,
+            'current_vs_normal_graph_url': current_prediction.get('current_vs_normal_graph_url'),
+            'report_download_url': download_url,
+            'selected_predictions': summary_rows
+        }
+
+        return jsonify(response_payload)
+
+    except Exception as e:
+        print(f"Error generating comparison analysis: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to generate comparison analysis'
+        }), 500
+
+
+@app.route('/prediction/comparison/<prediction_id>/<analysis_id>/download', methods=['GET'])
+@login_required
+def download_comparison_report(prediction_id, analysis_id):
+    """Download the Groq comparison analysis as a PDF"""
+    try:
+        if not prediction_id or not analysis_id:
+            return jsonify({'success': False, 'error': 'Missing identifiers'}), 400
+
+        user_id = session.get('user_id')
+        is_admin = session.get('role') == 'admin'
+
+        prediction = get_prediction_by_id(prediction_id)
+        if not prediction:
+            return jsonify({'success': False, 'error': 'Prediction not found'}), 404
+
+        owner_id = prediction.get('user_id', 'anonymous')
+        if not is_admin and owner_id != user_id:
+            return jsonify({'success': False, 'error': 'Unauthorized request'}), 403
+
+        comparisons = prediction.get('comparisons') or {}
+        comparison_entry = comparisons.get(analysis_id)
+        if not comparison_entry:
+            return jsonify({'success': False, 'error': 'Comparison analysis not found'}), 404
+
+        pdf_buffer, filename = generate_comparison_pdf(prediction, comparison_entry)
+
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+
+    except Exception as e:
+        print(f"Error downloading comparison report: {e}")
+        return jsonify({'success': False, 'error': 'Failed to download comparison report'}), 500
 
 
 @app.route('/report', methods=['POST'])

@@ -3,16 +3,30 @@ User Authentication and Authorization Module
 Handles user registration, login, and role-based access control
 """
 import os
+import re
 import hashlib
 import secrets
+import smtplib
+from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import session, redirect, url_for, request
 from firebase_config import db
 
+try:
+    from google.oauth2 import id_token as google_id_token
+    from google.auth.transport import requests as google_requests
+    GOOGLE_AUTH_AVAILABLE = True
+except ImportError:
+    GOOGLE_AUTH_AVAILABLE = False
+
 # Admin credentials (hardcoded for security)
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD_HASH = "e54fc6b51915e222ba6196747a19ebb8dfa651fd2b46a385a0ded647fbfefda0"  # Change this password!
+
+# OAuth and email configuration
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+PASSWORD_RESET_EXPIRY_HOURS = int(os.getenv('PASSWORD_RESET_EXPIRY_HOURS', '1'))
 
 def hash_password(password):
     """Hash password using SHA-256"""
@@ -21,6 +35,71 @@ def hash_password(password):
 def generate_session_token():
     """Generate a secure session token"""
     return secrets.token_urlsafe(32)
+
+
+def _generate_username_from_email(email):
+    """Create a unique username based on the email address"""
+    base_part = (email or '').split('@')[0]
+    sanitized = re.sub(r'[^A-Za-z0-9_]', '', base_part) or 'user'
+    candidate = sanitized.lower()
+
+    if not db:
+        return candidate
+
+    try:
+        users_ref = db.collection('users')
+    except Exception:
+        return candidate
+
+    suffix = 0
+    while True:
+        check_username = candidate if suffix == 0 else f"{candidate}{suffix}"
+        try:
+            existing = users_ref.where('username', '==', check_username).limit(1).stream()
+            if len(list(existing)) == 0:
+                return check_username
+        except Exception:
+            return check_username
+        suffix += 1
+
+
+def send_password_reset_email(recipient_email, reset_url):
+    """Send password reset instructions via SMTP"""
+    smtp_host = os.getenv('SMTP_HOST')
+    if not smtp_host:
+        print(f"⚠️ SMTP_HOST not configured. Password reset link for {recipient_email}: {reset_url}")
+        return False, "Email service not configured"
+
+    smtp_port = int(os.getenv('SMTP_PORT', '587'))
+    smtp_username = os.getenv('SMTP_USERNAME')
+    smtp_password = os.getenv('SMTP_PASSWORD')
+    use_tls = os.getenv('SMTP_USE_TLS', 'true').lower() != 'false'
+    sender_email = os.getenv('SMTP_FROM_EMAIL') or smtp_username or 'no-reply@diabetes-predictor.local'
+
+    subject = 'Reset your Diabetes Health Predictor password'
+    body = (
+        "We received a request to reset your Diabetes Health Predictor account password.\n\n"
+        f"If you made this request, click the link below within {PASSWORD_RESET_EXPIRY_HOURS} hour(s) to choose a new password:\n\n"
+        f"{reset_url}\n\n"
+        "If you did not request a reset, you can safely ignore this email.\n"
+    )
+
+    message = MIMEText(body)
+    message['Subject'] = subject
+    message['From'] = sender_email
+    message['To'] = recipient_email
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            if use_tls:
+                server.starttls()
+            if smtp_username and smtp_password:
+                server.login(smtp_username, smtp_password)
+            server.sendmail(sender_email, [recipient_email], message.as_string())
+        return True, "Password reset email sent"
+    except Exception as exc:
+        print(f"❌ Error sending password reset email: {exc}")
+        return False, f"Email delivery failed: {exc}"
 
 def create_user(username, email, password, full_name, contact="", address=""):
     """
@@ -76,6 +155,148 @@ def create_user(username, email, password, full_name, contact="", address=""):
     except Exception as e:
         print(f"❌ Error creating user: {e}")
         return False, f"Error: {str(e)}", None
+
+
+def initiate_password_reset(email, base_url):
+    """Start the password reset flow for the provided email"""
+    if not db:
+        return False, "Database not initialized"
+
+    normalized_email = (email or '').strip().lower()
+    if not normalized_email:
+        return False, "Email is required"
+
+    try:
+        users_ref = db.collection('users')
+        user_matches = list(users_ref.where('email', '==', normalized_email).limit(1).stream())
+    except Exception as exc:
+        print(f"❌ Password reset lookup error: {exc}")
+        return False, "Unable to process password reset right now"
+
+    if not user_matches:
+        return True, "If an account exists for that email, we've sent reset instructions"
+
+    user_doc = user_matches[0]
+    user_data = user_doc.to_dict()
+    if not user_data.get('is_active', True):
+        return True, "If an account exists for that email, we've sent reset instructions"
+
+    if user_data.get('auth_provider') == 'google' and not user_data.get('password_hash'):
+        return True, "This account uses Google Sign-In. Please continue with Google to access your dashboard"
+
+    token = secrets.token_urlsafe(48)
+    expires_at = datetime.utcnow() + timedelta(hours=PASSWORD_RESET_EXPIRY_HOURS)
+
+    try:
+        tokens_ref = db.collection('password_resets')
+        tokens_ref.document(token).set({
+            'token': token,
+            'user_id': user_doc.id,
+            'email': normalized_email,
+            'created_at': datetime.utcnow().isoformat(),
+            'expires_at': expires_at.isoformat(),
+            'used': False
+        })
+    except Exception as exc:
+        print(f"❌ Unable to persist password reset token: {exc}")
+        return False, "Unable to process password reset right now"
+
+    base = (base_url or '').rstrip('/')
+    reset_url = f"{base}/reset-password?token={token}" if base else f"/reset-password?token={token}"
+
+    email_sent, email_message = send_password_reset_email(normalized_email, reset_url)
+    if not email_sent:
+        print(f"⚠️ Password reset delivery failed for {normalized_email}: {email_message}")
+        return False, email_message or "Unable to send password reset email right now"
+
+    return True, "If an account exists for that email, we've sent reset instructions"
+
+
+def validate_password_reset_token(token):
+    """Check whether a password reset token is valid"""
+    if not db:
+        return False, "Database not initialized", None
+
+    token_value = (token or '').strip()
+    if not token_value:
+        return False, "Invalid or expired reset link", None
+
+    try:
+        tokens_ref = db.collection('password_resets')
+        token_doc = tokens_ref.document(token_value)
+        token_snapshot = token_doc.get()
+    except Exception as exc:
+        print(f"❌ Password reset token lookup error: {exc}")
+        return False, "Invalid or expired reset link", None
+
+    if not getattr(token_doc, 'exists', False):
+        return False, "Invalid or expired reset link", None
+
+    token_data = token_snapshot.to_dict()
+    if token_data.get('used'):
+        return False, "This reset link has already been used", None
+
+    expires_at = token_data.get('expires_at')
+    try:
+        expiry_dt = datetime.fromisoformat(expires_at) if expires_at else None
+    except Exception:
+        expiry_dt = None
+
+    if not expiry_dt or expiry_dt < datetime.utcnow():
+        try:
+            token_doc.delete()
+        except Exception:
+            pass
+        return False, "This reset link has expired", None
+
+    return True, "Valid token", token_data
+
+
+def reset_password_with_token(token, new_password):
+    """Update the user's password when a valid token is provided"""
+    token_value = (token or '').strip()
+
+    if len((new_password or '').strip()) < 6:
+        return False, "Password must be at least 6 characters"
+
+    valid, message, token_data = validate_password_reset_token(token_value)
+    if not valid:
+        return False, message
+
+    user_id = token_data.get('user_id')
+    if not user_id:
+        return False, "User account not found"
+
+    try:
+        users_ref = db.collection('users')
+        user_doc = users_ref.document(user_id)
+    except Exception as exc:
+        print(f"❌ Password reset update error: {exc}")
+        return False, "Unable to reset password right now"
+
+    if not user_doc.exists:
+        return False, "User account not found"
+
+    try:
+        user_doc.update({
+            'password_hash': hash_password(new_password.strip()),
+            'auth_provider': 'password',
+            'last_password_reset': datetime.utcnow().isoformat()
+        })
+    except Exception as exc:
+        print(f"❌ Failed to update password: {exc}")
+        return False, "Unable to reset password right now"
+
+    try:
+        tokens_ref = db.collection('password_resets')
+        tokens_ref.document(token_value).update({
+            'used': True,
+            'used_at': datetime.utcnow().isoformat()
+        })
+    except Exception:
+        pass
+
+    return True, "Password reset successfully"
 
 def authenticate_user(username, password):
     """
@@ -151,6 +372,115 @@ def authenticate_user(username, password):
     except Exception as e:
         print(f"❌ Authentication error: {e}")
         return False, f"Error: {str(e)}", None
+
+
+def authenticate_google_user(id_token_str):
+    """Authenticate or create users using Google Sign-In"""
+    if not GOOGLE_AUTH_AVAILABLE:
+        return False, "Google authentication library not available", None
+
+    if not GOOGLE_CLIENT_ID:
+        return False, "Google Sign-In is not configured", None
+
+    credential = (id_token_str or '').strip()
+    if not credential:
+        return False, "Missing Google credential", None
+
+    try:
+        id_info = google_id_token.verify_oauth2_token(
+            credential,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID
+        )
+    except Exception as exc:
+        print(f"❌ Google token verification failed: {exc}")
+        return False, "Unable to verify Google credential", None
+
+    email = (id_info.get('email') or '').lower()
+    if not email:
+        return False, "Google account is missing an email address", None
+
+    full_name = id_info.get('name') or email.split('@')[0]
+    picture = id_info.get('picture')
+    google_subject = id_info.get('sub')
+
+    if not db:
+        return False, "Database not initialized", None
+
+    try:
+        users_ref = db.collection('users')
+        matching_users = list(users_ref.where('email', '==', email).limit(1).stream())
+    except Exception as exc:
+        print(f"❌ Google login lookup error: {exc}")
+        return False, "Unable to complete Google login", None
+
+    if matching_users:
+        user_doc = matching_users[0]
+        user_data = user_doc.to_dict()
+        if not user_data.get('is_active', True):
+            return False, "Account is disabled", None
+
+        updates = {
+            'last_login': datetime.utcnow().isoformat(),
+            'auth_provider': user_data.get('auth_provider', 'google'),
+            'google_subject': google_subject,
+            'email_verified': bool(id_info.get('email_verified'))
+        }
+        if picture:
+            updates['picture'] = picture
+        if full_name and not user_data.get('full_name'):
+            updates['full_name'] = full_name
+        if not user_data.get('username'):
+            updates['username'] = _generate_username_from_email(email)
+
+        try:
+            user_doc.update(updates)
+        except Exception as exc:
+            print(f"⚠️ Failed to update Google user metadata: {exc}")
+
+        user_data.update(updates)
+        user_id = user_doc.id
+    else:
+        username = _generate_username_from_email(email)
+        user_payload = {
+            'username': username,
+            'email': email,
+            'full_name': full_name,
+            'contact': '',
+            'address': '',
+            'role': 'user',
+            'created_at': datetime.utcnow().isoformat(),
+            'last_login': datetime.utcnow().isoformat(),
+            'is_active': True,
+            'auth_provider': 'google',
+            'google_subject': google_subject,
+            'email_verified': bool(id_info.get('email_verified')),
+            'picture': picture,
+            'password_hash': None
+        }
+
+        try:
+            doc_ref = users_ref.add(user_payload)
+            user_id = doc_ref[1].id
+            user_data = user_payload
+        except Exception as exc:
+            print(f"❌ Failed to create Google user: {exc}")
+            return False, "Unable to complete Google login", None
+
+    user_info = {
+        'user_id': user_id,
+        'username': user_data.get('username') or _generate_username_from_email(email),
+        'email': user_data.get('email'),
+        'full_name': user_data.get('full_name') or full_name,
+        'contact': user_data.get('contact', ''),
+        'address': user_data.get('address', ''),
+        'role': user_data.get('role', 'user'),
+        'picture': user_data.get('picture', picture)
+    }
+
+    print(f"✅ Google user authenticated: {email}")
+    return True, "Login successful", user_info
+
 
 def login_required(f):
     """Decorator to require login for routes"""

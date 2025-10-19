@@ -1,0 +1,149 @@
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║              DIABETES ASSESSMENT & DIAGNOSTIC CENTER                      ║
+║              Endocrinology & Metabolism Department                        ║
+║              Advanced Diabetes Care & Prevention                          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+MEDICAL REPORT - DIABETES RISK PREDICTION
+══════════════════════════════════════════════════════════════════════════
+
+Report Date: October 19, 2025 at 06:11 PM
+Patient ID: DB-CHA-202510191811
+Assessment Type: Comprehensive Diabetes Screening
+
+══════════════════════════════════════════════════════════════════════════
+PATIENT INFORMATION
+══════════════════════════════════════════════════════════════════════════
+Name: Chapala Naveen Kumar
+Age: 14 years
+Sex: Male
+Contact: 8897464729
+
+══════════════════════════════════════════════════════════════════════════
+
+**EXECUTIVE SUMMARY**
+
+Chapala Naveen Kumar, a 14-year-old male patient, has been assessed for diabetes risk based on laboratory and clinical parameters. Key findings indicate a fasting plasma glucose level of 123 mg/dL, elevated 2-hour serum insulin level of 79 μU/mL, and a triceps skin fold thickness of 20 mm. Despite these findings, the AI-assisted diagnostic assessment predicts a LOW RISK for diabetes, with a model confidence of 84.51%. However, it is essential to monitor the patient's condition closely due to the elevated glucose and insulin levels.
+
+**PATIENT OVERVIEW**
+
+- Age: 14 years
+- Sex: Male
+- Contact: 8897464729
+- Pregnancy History: Not applicable (0 pregnancies)
+
+**LABORATORY FINDINGS & ANALYSIS**
+
+1. **Fasting Plasma Glucose (FPG)**: 123 mg/dL
+   - Normal Reference Range: 70-100 mg/dL
+   - Clinical Interpretation: Elevated
+   - Significance to Diabetes Risk: Indicates impaired fasting glucose regulation, which may be a precursor to diabetes.
+
+2. **Diastolic Blood Pressure (DBP)**: 34 mmHg
+   - Normal Reference Range: 60-80 mmHg
+   - Clinical Interpretation: Borderline Low
+   - Significance to Diabetes Risk: Hypotension may be related to impaired glucose regulation or insulin resistance.
+
+3. **Body Mass Index (BMI)**: 23 kg/m²
+   - Normal Reference Range: 18.5-24.9 kg/m²
+   - Clinical Interpretation: Normal
+   - Significance to Diabetes Risk: Within a healthy range, but weight management should still be encouraged.
+
+4. **2-Hour Serum Insulin (2-HSI)**: 79 μU/mL
+   - Normal Reference Range: 16-166 μU/mL
+   - Clinical Interpretation: Elevated
+   - Significance to Diabetes Risk: Indicates insulin resistance, which may be a precursor to type 2 diabetes.
+
+5. **Triceps Skin Fold Thickness (TSFT)**: 20 mm
+   - Normal Reference Range: Not established for adolescents
+   - Clinical Interpretation: Elevated
+   - Significance to Diabetes Risk: May indicate increased body fat, which can contribute to insulin resistance.
+
+6. **Diabetes Pedigree Function (DPF)**: 0.001
+   - Genetic predisposition indicator
+   - Clinical Interpretation: Low genetic risk
+   - Significance to Diabetes Risk: Suggests a lower likelihood of genetic predisposition to diabetes.
+
+**CLINICAL INTERPRETATION**
+
+The patient's laboratory findings indicate impaired fasting glucose regulation and insulin resistance. However, the AI-assisted diagnostic assessment predicts a LOW RISK for diabetes. It is essential to monitor the patient's condition closely and address the underlying risk factors. The patient's triceps skin fold thickness and elevated 2-hour serum insulin level suggest the need for lifestyle modifications to improve insulin sensitivity and glucose regulation.
+
+**DIABETES RISK STRATIFICATION**
+
+- **Risk Classification:** LOW RISK
+- **Model Confidence:** 84.51%
+- **Medical Rationale:** The patient's laboratory findings indicate impaired glucose regulation and insulin resistance, but the AI-assisted diagnostic assessment predicts a LOW RISK for diabetes.
+
+**CLINICAL RECOMMENDATIONS**
+
+1. **Immediate Actions Required:**
+   - Schedule a follow-up appointment in 3 months to reassess the patient's glucose and insulin levels.
+   - Encourage the patient to maintain a healthy diet and engage in regular physical activity.
+2. **Medications to Consider:** None at this time.
+3. **Specialist Referrals Needed:** None at this time.
+4. **Diagnostic Tests to Order:** Repeat fasting plasma glucose and 2-hour serum insulin levels in 3 months.
+5. **Timeline for Interventions:** Schedule regular follow-up appointments to monitor the patient's condition and adjust the treatment plan as needed.
+
+**LIFESTYLE MODIFICATIONS**
+
+1. **DIETARY GUIDELINES:**
+   - **Carbohydrate Management:** Aim for 45-65% of daily calories from carbohydrates.
+   - **Foods to Emphasize:** Whole grains, fruits, vegetables, lean proteins, and healthy fats.
+   - **Foods to Limit/Avoid:** Sugary drinks, refined carbohydrates, and saturated fats.
+   - **Meal Timing and Portion Control:** Encourage three main meals and two to three snacks per day, with portion control to maintain a healthy weight.
+
+2. **PHYSICAL ACTIVITY:**
+   - **Type of Exercise:** Aerobic exercise (e.g., brisk walking, cycling) and resistance training (e.g., weightlifting).
+   - **Frequency:** Engage in physical activity for at least 60 minutes per day, 5 days per week.
+   - **Duration:** Aim for 30-60 minutes per session.
+   - **Intensity Guidelines:** Moderate to high intensity exercise.
+
+3. **WEIGHT MANAGEMENT:**
+   - **Target Weight Range:** Based on BMI, aim for a weight range of 55-65 kg.
+   - **Realistic Weight Loss Goals:** Aim for a weight loss of 0.5-1 kg per week.
+
+4. **MONITORING:**
+   - **Self-Monitoring Blood Glucose (SMBG):** Not recommended at this time.
+   - **What to Track Daily:** Food intake, physical activity, and weight.
+   - **Warning Signs to Watch For:** Increased thirst, urination, or fatigue.
+
+**FOLLOW-UP CARE PLAN**
+
+- **Next Appointment Timeframe:** Schedule a follow-up appointment in 3 months.
+- **Tests to Repeat and When:** Repeat fasting plasma glucose and 2-hour serum insulin levels in 3 months.
+- **Parameters to Monitor at Home:** Food intake, physical activity, and weight.
+- **When to Seek Immediate Medical Attention:** If the patient experiences increased thirst, urination, or fatigue.
+
+**PHYSICIAN SUMMARY NOTES**
+
+- **Overall Clinical Impression:** The patient has impaired fasting glucose regulation and insulin resistance, but the AI-assisted diagnostic assessment predicts a LOW RISK for diabetes.
+- **Prognosis with and without Intervention:** With lifestyle modifications and regular follow-up appointments, the patient's condition is likely to improve.
+- **Key Patient Education Points:** Encourage the patient to maintain a healthy diet, engage in regular physical activity, and monitor their condition closely.
+- **Encouragement and Motivation:** Remind the patient that early intervention and lifestyle modifications can significantly improve their health outcomes.
+
+══════════════════════════════════════════════════════════════════════════
+IMPORTANT MEDICAL DISCLAIMER
+══════════════════════════════════════════════════════════════════════════
+This report is generated using AI-assisted diagnostic tools and machine 
+learning algorithms. It should be used as a screening tool only and must 
+be reviewed and validated by a licensed medical professional.
+
+For any health concerns or before making any medical decisions, please 
+consult with a qualified healthcare provider or endocrinologist.
+
+══════════════════════════════════════════════════════════════════════════
+REPORT AUTHENTICATION
+══════════════════════════════════════════════════════════════════════════
+Generated By: AI-Assisted Diagnostic System
+Reviewed By: [Requires Licensed Physician Review]
+Report ID: DB-CHA-202510191811
+Generation Date: October 19, 2025 at 06:11 PM
+
+══════════════════════════════════════════════════════════════════════════
+
+© 2025 Diabetes Assessment & Diagnostic Center
+Advanced Endocrinology Department | Powered by Naveenkumar
+Help & Support: naveenkumarchapala02@gmail.com
+
+All Rights Reserved | Confidential Medical Document

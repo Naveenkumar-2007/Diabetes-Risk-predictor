@@ -146,6 +146,24 @@ class LocalDBRef:
                 current[part] = {}
             current = current[part]
         current[parts[-1]] = value
+    def update(self, value):
+        parts = self.path.split('/') if self.path else []
+        if not parts:
+            if isinstance(value, dict):
+                self.data.update(value)
+            return
+        current = self.data
+        for part in parts[:-1]:
+            if part not in current or not isinstance(current[part], dict):
+                current[part] = {}
+            current = current[part]
+        leaf = parts[-1]
+        if leaf not in current or not isinstance(current[leaf], dict):
+            current[leaf] = {}
+        if isinstance(value, dict):
+            current[leaf].update(value)
+        else:
+            current[leaf] = value
 
 local_db = LocalDB()
 db_ref = local_db
@@ -325,6 +343,76 @@ def get_user_statistics(user_id=None):
     """Get statistics for a specific user"""
     return get_statistics(user_id=user_id)
 
+
+def get_prediction_by_id(prediction_id):
+    """Fetch a single prediction document by its ID"""
+    global db_ref
+    if not prediction_id:
+        return None
+    try:
+        initialize_firebase()
+        return db_ref.child('predictions').child(prediction_id).get()
+    except Exception as e:
+        print(f"Error fetching prediction {prediction_id}: {e}")
+        return None
+
+
+def get_predictions_by_ids(prediction_ids):
+    """Fetch multiple predictions at once"""
+    results = {}
+    if not prediction_ids:
+        return results
+    for pred_id in prediction_ids:
+        document = get_prediction_by_id(pred_id)
+        if document:
+            results[pred_id] = document
+    return results
+
+
+def update_prediction_record(prediction_id, updates, user_id=None):
+    """Update a prediction record in the global and user-specific nodes"""
+    global db_ref
+    if not prediction_id or not isinstance(updates, dict) or not updates:
+        return False
+    try:
+        initialize_firebase()
+        prediction_ref = db_ref.child('predictions').child(prediction_id)
+        prediction_ref.update(updates)
+        if user_id and user_id != 'anonymous':
+            user_ref = db_ref.child('users').child(user_id).child('predictions').child(prediction_id)
+            user_ref.update(updates)
+        return True
+    except Exception as e:
+        print(f"Error updating prediction {prediction_id}: {e}")
+        return False
+
+
+def append_prediction_comparison(prediction_id, comparison_entry, user_id=None):
+    """Append a comparison analysis entry under a prediction document"""
+    global db_ref
+    if not prediction_id or not isinstance(comparison_entry, dict):
+        return False
+    try:
+        initialize_firebase()
+        prediction_ref = db_ref.child('predictions').child(prediction_id)
+        existing = prediction_ref.get() or {}
+        comparisons = existing.get('comparisons', {}) if isinstance(existing, dict) else {}
+        analysis_id = comparison_entry.get('analysis_id')
+        if not analysis_id:
+            return False
+        comparisons[analysis_id] = comparison_entry
+        prediction_ref.update({'comparisons': comparisons})
+        if user_id and user_id != 'anonymous':
+            user_ref = db_ref.child('users').child(user_id).child('predictions').child(prediction_id)
+            user_doc = user_ref.get() or {}
+            user_comparisons = user_doc.get('comparisons', {}) if isinstance(user_doc, dict) else {}
+            user_comparisons[analysis_id] = comparison_entry
+            user_ref.update({'comparisons': user_comparisons})
+        return True
+    except Exception as e:
+        print(f"Error storing comparison for prediction {prediction_id}: {e}")
+        return False
+
 # ==================== FIRESTORE-LIKE CLASSES ====================
 
 class LocalCollection:
@@ -344,7 +432,7 @@ class LocalCollection:
                 print(f'Sync error: {e}')
     
     def document(self, doc_id):
-        return LocalDocument(self.data[self.collection_name], doc_id, self.collection_name)
+        return LocalDocument(self.data[self.collection_name], doc_id, None, self.collection_name)
     
     def add(self, data):
         """Add a new document with auto-generated ID"""

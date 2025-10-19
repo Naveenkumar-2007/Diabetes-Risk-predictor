@@ -11,6 +11,9 @@ from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score
 import warnings
 warnings.filterwarnings('ignore')
+import mlflow
+import mlflow.sklearn
+from pathlib import Path
 
 print("="*70)
 print("DIABETES PREDICTION MODEL - RETRAINING WITH BEST PRACTICES")
@@ -51,6 +54,15 @@ scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 print("   ✓ Features scaled (StandardScaler)")
+
+# Ensure artifacts dir exists
+Path("artifacts").mkdir(parents=True, exist_ok=True)
+
+# Start MLflow run
+mlflow.set_experiment("diabetes-prediction")
+with mlflow.start_run(run_name="retrain-model") as run:
+    mlflow.log_param("n_samples", df.shape[0])
+    mlflow.log_param("n_features", X.shape[1])
 
 # Train multiple models and find the best one
 print("\n5. Training and evaluating multiple models...")
@@ -135,9 +147,17 @@ for name, model in models.items():
         best_model = best_estimator
         best_model_name = name
 
+    # Log model cross-validation results for this candidate
+    mlflow.log_metric(f"{name}_accuracy", accuracy)
+    mlflow.log_metric(f"{name}_roc_auc", roc_auc)
+
 print("\n" + "="*70)
 print(f"BEST MODEL: {best_model_name} (ROC-AUC: {best_score:.4f})")
 print("="*70)
+
+# Log best model info
+mlflow.log_param("best_model", best_model_name)
+mlflow.log_metric("best_roc_auc", best_score)
 
 # Detailed evaluation of best model
 print("\n6. Detailed evaluation of best model...")
@@ -211,6 +231,17 @@ print(f"   ✓ Model saved: artifacts/model.pkl")
 with open(r'artifacts\scaler.pkl', 'wb') as f:
     pickle.dump(scaler, f)
 print(f"   ✓ Scaler saved: artifacts/scaler.pkl")
+
+# Log artifacts and register model with MLflow
+try:
+    mlflow.log_artifact("artifacts/model_info.txt")
+    mlflow.log_artifact("artifacts/model.pkl")
+    mlflow.log_artifact("artifacts/scaler.pkl")
+    # Save sklearn model using MLflow for easy loading and registry operations
+    mlflow.sklearn.log_model(best_model, artifact_path="sklearn-model", registered_model_name="diabetes-prediction-model")
+    print("   ✓ Model and artifacts logged to MLflow")
+except Exception as e:
+    print(f"⚠️ Warning: failed to log model to MLflow: {e}")
 
 # Save model info
 with open(r'artifacts\model_info.txt', 'w') as f:

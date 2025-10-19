@@ -6,6 +6,10 @@
     <title>Diabetes Health Predictor - AI Medical System</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% if google_login_enabled %}
+    <meta name="google-signin-client_id" content="{{ google_client_id }}">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    {% endif %}
     <style>
         * {
             margin: 0;
@@ -129,6 +133,13 @@
             box-shadow: 0 8px 20px rgba(8, 145, 178, 0.2);
         }
 
+        .google-container {
+            margin-top: 6px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: center;
+        }
+
         .footer {
             margin-top: 32px;
             padding-top: 28px;
@@ -216,6 +227,17 @@
             <i class="fas fa-sign-in-alt"></i>
             <span>Login to Your Account</span>
         </a>
+
+        {% if google_login_enabled %}
+        <div class="google-container">
+            <div id="googleSignInButtonLanding"></div>
+        </div>
+        {% else %}
+        <p class="subtitle" style="font-size: 13px; margin-top: -6px; margin-bottom: 16px;">
+            Google sign-in is disabled. Add client credentials to enable one-tap access.
+        </p>
+        {% endif %}
+
         <a href="/register" class="button button-secondary">
             <i class="fas fa-user-plus"></i>
             <span>Create New Account</span>
@@ -232,5 +254,68 @@
             </div>
         </div>
     </div>
+    {% if google_login_enabled %}
+    <script>
+        const landingGoogleClientId = '{{ google_client_id }}';
+
+        window.handleGoogleCredential = async (googleResponse) => {
+            const credential = googleResponse && googleResponse.credential;
+            if (!credential) {
+                alert('Google sign-in failed. Please try again.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/login/google', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ credential })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    alert(data.message || 'Google login failed.');
+                }
+            } catch (error) {
+                alert('Google sign-in is unavailable right now. Please use the email login instead.');
+            }
+        };
+
+        function renderLandingGoogleButton(attempt = 0) {
+            const maxAttempts = 20;
+            if (!(window.google && window.google.accounts && window.google.accounts.id)) {
+                if (attempt < maxAttempts) {
+                    setTimeout(() => renderLandingGoogleButton(attempt + 1), 150);
+                } else {
+                    console.warn('Google Identity Services script failed to load on landing page.');
+                }
+                return;
+            }
+
+            window.google.accounts.id.initialize({
+                client_id: landingGoogleClientId,
+                callback: handleGoogleCredential,
+                ux_mode: 'popup'
+            });
+
+            const buttonContainer = document.getElementById('googleSignInButtonLanding');
+            if (buttonContainer) {
+                window.google.accounts.id.renderButton(buttonContainer, {
+                    theme: 'outline',
+                    size: 'large',
+                    width: 280,
+                    shape: 'pill',
+                    text: 'signin_with'
+                });
+            }
+        }
+
+        window.addEventListener('load', () => renderLandingGoogleButton());
+    </script>
+    {% endif %}
 </body>
 </html>
