@@ -1,0 +1,80 @@
+name: MLOps Training Pipeline
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+  workflow_dispatch:  # Manual trigger
+  push:
+    paths:
+      - 'data/**'
+      - 'mlops/**'
+      - 'mlops_config.py'
+
+jobs:
+  train-model:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Validate data
+      run: |
+        python -c "import pandas as pd; df = pd.read_csv('data/raw/diabetes.csv'); print(f'Data shape: {df.shape}'); assert len(df) > 0"
+    
+    - name: Train model
+      run: |
+        python mlops/training/trainer.py
+    
+    - name: Run tests
+      run: |
+        pytest tests/test_mlops.py -v --tb=short
+    
+    - name: Check model performance
+      run: |
+        python -c "
+import json
+with open('artifacts/model_metadata.json', 'r') as f:
+    metadata = json.load(f)
+    roc_auc = metadata['metrics']['roc_auc']
+    print(f'ROC-AUC: {roc_auc:.4f}')
+    assert roc_auc >= 0.80, f'ROC-AUC {roc_auc} below threshold'
+        "
+    
+    - name: Upload model artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: model-artifacts
+        path: |
+          artifacts/model.pkl
+          artifacts/scaler.pkl
+          artifacts/model_metadata.json
+    
+    - name: Commit updated model
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add artifacts/*.pkl artifacts/*.json
+        git diff --quiet && git diff --staged --quiet || git commit -m "chore: update model artifacts [automated]"
+    
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}

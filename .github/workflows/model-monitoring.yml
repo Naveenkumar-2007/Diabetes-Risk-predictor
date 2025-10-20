@@ -1,71 +1,65 @@
-name: Model Monitoring & Drift Detection
+name: Model Monitoring
 
 on:
-  # Run daily to check for drift
   schedule:
-    - cron: '0 2 * * *'  # 2 AM daily
-  
-  # Manual trigger
+    - cron: '0 2 * * *'  # Daily at 2 AM
   workflow_dispatch:
 
 jobs:
-  drift-detection:
+  monitor-model:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-      
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
-        
+        python-version: '3.11'
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pandas numpy scipy scikit-learn
-        
-    - name: Run drift detection
-      id: drift_check
+        pip install -r requirements.txt
+    
+    - name: Check for drift
+      id: drift
       run: |
-        python mlops/model_monitor.py > drift_report.txt
-        cat drift_report.txt
-        
-    - name: Check for retraining trigger
-      id: retrain_check
+        python mlops/monitoring/monitor.py > monitoring_output.txt
+        cat monitoring_output.txt
+        echo "::set-output name=report::$(cat monitoring_output.txt | tail -1)"
+    
+    - name: Check retraining conditions
+      id: retrain
       run: |
         python -c "
-        from mlops.model_monitor import ModelMonitor
-        monitor = ModelMonitor()
-        should_retrain, reason = monitor.should_trigger_retraining()
-        print(f'should_retrain={should_retrain}')
-        print(f'Reason: {reason}')
-        " | tee retrain_check.txt
-        
-        # Extract result
-        if grep -q "should_retrain=True" retrain_check.txt; then
-          echo "RETRAIN_NEEDED=true" >> $GITHUB_OUTPUT
-        else
-          echo "RETRAIN_NEEDED=false" >> $GITHUB_OUTPUT
-        fi
-        
+from mlops.monitoring.monitor import ModelMonitor
+monitor = ModelMonitor()
+should_retrain, reasons = monitor.should_retrain()
+print(f'Should retrain: {should_retrain}')
+print(f'Reasons: {reasons}')
+with open('should_retrain.txt', 'w') as f:
+    f.write(str(should_retrain))
+        "
+        echo "::set-output name=should_retrain::$(cat should_retrain.txt)"
+    
     - name: Trigger retraining workflow
-      if: steps.retrain_check.outputs.RETRAIN_NEEDED == 'true'
+      if: steps.retrain.outputs.should_retrain == 'True'
       uses: actions/github-script@v6
       with:
         script: |
           github.rest.actions.createWorkflowDispatch({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            workflow_id: 'mlops-pipeline.yml',
+            workflow_id: 'mlops-training.yml',
             ref: 'main'
           })
-          
-    - name: Upload drift report
+    
+    - name: Upload monitoring reports
       uses: actions/upload-artifact@v3
       with:
-        name: drift-report
+        name: monitoring-reports
         path: |
-          drift_report.txt
-          logs/predictions/drift_alerts.jsonl
+          logs/drift_reports/*.json
+          logs/performance_reports/*.json

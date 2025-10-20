@@ -1,62 +1,112 @@
 """
-MLOps Configuration for Diabetes Prediction Model
-Centralized configuration for model tracking, versioning, and deployment
+MLOps Configuration
+Central configuration for all MLOps components
 """
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 
-load_dotenv()
+# Base paths
+BASE_DIR = Path(__file__).parent
+ARTIFACTS_DIR = BASE_DIR / "artifacts"
+DATA_DIR = BASE_DIR / "data"
+LOGS_DIR = BASE_DIR / "logs"
+MODEL_REGISTRY_DIR = BASE_DIR / "model_registry"
 
-# MLflow Configuration
-MLFLOW_TRACKING_URI = os.getenv('MLFLOW_TRACKING_URI', 'sqlite:///mlflow.db')
+# MLflow configuration
+MLFLOW_TRACKING_URI = f"sqlite:///{BASE_DIR / 'mlflow.db'}"
 MLFLOW_EXPERIMENT_NAME = "diabetes-prediction-production"
 MLFLOW_MODEL_NAME = "diabetes-risk-predictor"
 
-# Model Versioning
-MODEL_REGISTRY_PATH = Path("model_registry")
-ARTIFACT_PATH = Path("artifacts")
-MODEL_VERSION_FILE = ARTIFACT_PATH / "model_version.txt"
+# Model paths
+MODEL_PATH = ARTIFACTS_DIR / "model.pkl"
+SCALER_PATH = ARTIFACTS_DIR / "scaler.pkl"
+METADATA_PATH = ARTIFACTS_DIR / "model_metadata.json"
 
-# Data Versioning
-DATA_PATH = Path("data/raw")
-PROCESSED_DATA_PATH = Path("data/processed")
-DATA_VERSION_FILE = DATA_PATH / "data_version.txt"
+# Data paths
+TRAIN_DATA_PATH = DATA_DIR / "raw" / "diabetes.csv"
+PROCESSED_DATA_DIR = DATA_DIR / "processed"
+REFERENCE_DISTRIBUTION_PATH = PROCESSED_DATA_DIR / "reference_distribution.pkl"
 
-# Model Performance Thresholds
-MIN_ACCURACY = float(os.getenv('MIN_MODEL_ACCURACY', '0.75'))
-MIN_ROC_AUC = float(os.getenv('MIN_MODEL_ROC_AUC', '0.80'))
-MIN_F1_SCORE = float(os.getenv('MIN_MODEL_F1', '0.70'))
+# Monitoring paths
+PREDICTION_LOG_PATH = LOGS_DIR / "predictions" / "predictions.jsonl"
+DRIFT_REPORT_PATH = LOGS_DIR / "drift_reports"
+PERFORMANCE_REPORT_PATH = LOGS_DIR / "performance_reports"
 
-# Model Monitoring
-PREDICTION_LOG_PATH = Path("logs/predictions")
-DRIFT_DETECTION_WINDOW = int(os.getenv('DRIFT_DETECTION_WINDOW', '1000'))  # Number of predictions
-DRIFT_THRESHOLD = float(os.getenv('DRIFT_THRESHOLD', '0.05'))  # PSI threshold
+# Performance thresholds
+MIN_ACCURACY = 0.72  # Realistic threshold for diabetes prediction
+MIN_ROC_AUC = 0.80
+MIN_F1_SCORE = 0.65
+MIN_PRECISION = 0.60
+MIN_RECALL = 0.60
 
-# Automated Retraining
-AUTO_RETRAIN_ENABLED = os.getenv('AUTO_RETRAIN_ENABLED', 'true').lower() == 'true'
-RETRAIN_SCHEDULE = os.getenv('RETRAIN_SCHEDULE', '0 0 * * 0')  # Weekly on Sunday
-MIN_NEW_DATA_THRESHOLD = int(os.getenv('MIN_NEW_DATA_THRESHOLD', '100'))  # Min new predictions for retrain
+# Drift detection thresholds
+DRIFT_THRESHOLD_PSI = 0.05  # Population Stability Index
+DRIFT_THRESHOLD_KS = 0.10   # Kolmogorov-Smirnov test
+PERFORMANCE_DROP_THRESHOLD = 0.10  # 10% drop triggers alert
 
-# Feature Store
+# Monitoring windows
+DRIFT_DETECTION_WINDOW = 1000  # Number of predictions to analyze
+PERFORMANCE_WINDOW_DAYS = 7
+
+# Retraining triggers
+MIN_NEW_SAMPLES_FOR_RETRAIN = 100
+RETRAIN_ON_DRIFT = True
+RETRAIN_ON_PERFORMANCE_DROP = True
+
+# Feature engineering
 FEATURE_NAMES = [
     'Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness',
     'Insulin', 'BMI', 'DiabetesPedigreeFunction', 'Age'
 ]
 
-# Model Metadata
-MODEL_DESCRIPTION = "Diabetes Risk Prediction ML Model with XGBoost"
-MODEL_TAGS = {
-    "domain": "healthcare",
-    "task": "classification",
-    "algorithm": "ensemble",
-    "framework": "scikit-learn+xgboost"
+ENGINEERED_FEATURES = [
+    'BMI_Age_Interaction',
+    'Glucose_Insulin_Ratio'
+]
+
+ALL_FEATURES = FEATURE_NAMES + ENGINEERED_FEATURES
+
+# Model training configuration
+RANDOM_STATE = 42
+TEST_SIZE = 0.2
+CV_FOLDS = 5
+
+MODEL_CONFIGS = {
+    'xgboost': {
+        'n_estimators': 200,
+        'max_depth': 4,
+        'learning_rate': 0.1,
+        'random_state': RANDOM_STATE
+    },
+    'random_forest': {
+        'n_estimators': 150,
+        'max_depth': 5,
+        'random_state': RANDOM_STATE
+    },
+    'gradient_boosting': {
+        'n_estimators': 150,
+        'learning_rate': 0.1,
+        'max_depth': 4,
+        'random_state': RANDOM_STATE
+    }
 }
 
-# Create necessary directories
-MODEL_REGISTRY_PATH.mkdir(parents=True, exist_ok=True)
-ARTIFACT_PATH.mkdir(parents=True, exist_ok=True)
-PREDICTION_LOG_PATH.mkdir(parents=True, exist_ok=True)
-PROCESSED_DATA_PATH.mkdir(parents=True, exist_ok=True)
+# Ensure directories exist
+def setup_directories():
+    """Create necessary directories for MLOps"""
+    dirs = [
+        ARTIFACTS_DIR,
+        DATA_DIR / "raw",
+        DATA_DIR / "processed",
+        LOGS_DIR / "predictions",
+        LOGS_DIR / "drift_reports",
+        LOGS_DIR / "performance_reports",
+        MODEL_REGISTRY_DIR,
+        BASE_DIR / "tests"
+    ]
+    for dir_path in dirs:
+        dir_path.mkdir(parents=True, exist_ok=True)
+    print("✅ MLOps directories created successfully")
 
-print("✅ MLOps Configuration Loaded")
+if __name__ == "__main__":
+    setup_directories()

@@ -1,0 +1,31 @@
+{
+  "model_name": "XGBoost",
+  "version": 1,
+  "training_date": "2025-10-20T12:08:19.820211",
+  "feature_names": [
+    "Pregnancies",
+    "Glucose",
+    "BloodPressure",
+    "SkinThickness",
+    "Insulin",
+    "BMI",
+    "DiabetesPedigreeFunction",
+    "Age",
+    "BMI_Age_Interaction",
+    "Glucose_Insulin_Ratio"
+  ],
+  "metrics": {
+    "accuracy": 0.7597402597402597,
+    "precision": 0.6545454545454545,
+    "recall": 0.6666666666666666,
+    "f1_score": 0.6605504587155964,
+    "roc_auc": 0.8188888888888889,
+    "cv_mean": 0.7296814607490336,
+    "cv_std": 0.0215943908379255
+  },
+  "thresholds": {
+    "min_accuracy": 0.72,
+    "min_roc_auc": 0.8,
+    "min_f1_score": 0.65
+  }
+}

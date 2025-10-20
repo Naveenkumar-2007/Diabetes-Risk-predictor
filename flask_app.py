@@ -19,6 +19,7 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 import json
 from datetime import datetime
+
 # Import Firebase configuration
 from firebase_config import (
     save_patient_data,
@@ -29,6 +30,7 @@ from firebase_config import (
     update_prediction_record,
     append_prediction_comparison
 )
+
 # Import authentication
 from auth import (
     create_user, authenticate_user, authenticate_google_user,
@@ -37,19 +39,23 @@ from auth import (
     get_user_predictions, get_user_statistics, change_password, update_user_profile
 )
 
-# Import MLOps monitoring
-try:
-    from mlops.model_monitor import ModelMonitor
-    model_monitor = ModelMonitor()
-    print("✅ Model monitoring enabled")
-except Exception as e:
-    print(f"⚠️  Model monitoring not available: {e}")
-    model_monitor = None
+# Import MLOps components
+from mlops.api.endpoints import mlops_bp
+from mlops.monitoring.monitor import ModelMonitor
+from mlops.utils.helpers import add_engineered_features
 
 # ------------------- FLASK APP SETUP -------------------
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'diabetes-predictor-secret-key-2025-change-in-production'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+
+# Register MLOps API Blueprint
+app.register_blueprint(mlops_bp)
+print("✅ MLOps API endpoints registered at /mlops/api")
+
+# Initialize MLOps Monitor
+model_monitor = ModelMonitor()
+print("✅ MLOps Monitoring initialized")
 
 # ------------------- LOAD ML MODEL & SCALER -------------------
 MODEL_PATH = os.path.join('artifacts', 'model.pkl')
@@ -493,16 +499,22 @@ def register_page():
 
 @app.route('/forgot-password')
 def forgot_password_page():
-    """Render forgot password page - accessible even when logged in"""
-    # Allow both logged-in and logged-out users to access this page
-    # This is useful if someone forgot their current password
+    """Render forgot password page"""
+    if 'user_id' in session:
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('user_dashboard'))
     return render_template('forgot_password.html')
 
 
 @app.route('/reset-password')
 def reset_password_page():
-    """Render reset password form when token is provided - accessible even when logged in"""
-    # Allow both logged-in and logged-out users to reset password with token
+    """Render reset password form when token is provided"""
+    if 'user_id' in session:
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('user_dashboard'))
+
     token = request.args.get('token', '').strip()
     token_valid = False
     status_message = "Invalid or expired reset link"
@@ -1145,144 +1157,72 @@ def get_all_reports():
 def get_all_patients():
     """API endpoint to get all registered patients with their statistics"""
     try:
-        from firebase_config import db, db_ref, initialize_firebase
-        initialize_firebase()
+        import firebase_config
+        firebase_config.initialize_firebase()
+        
+        # Get all users from Firebase
+        users_ref = firebase_config.db_ref.child('users')
+        all_users = users_ref.get()
+        
+        if not all_users:
+            return jsonify({
+                'success': True,
+                'patients': [],
+                'total_count': 0
+            })
         
         patients_list = []
-        
-        # Query Firestore users (includes Google auth users and regular users)
-        if db:
-            try:
-                users_ref = db.collection('users')
-                firestore_users = users_ref.stream()
+        for user_id, user_data in all_users.items():
+            if isinstance(user_data, dict):
+                # Skip admin users
+                if user_data.get('role') == 'admin':
+                    continue
                 
-                for user_doc in firestore_users:
-                    user_data = user_doc.to_dict()
-                    user_id = user_doc.id
-                    
-                    # Skip admin users
-                    if user_data.get('role') == 'admin':
-                        continue
-                    
-                    # Get predictions from Realtime DB for this user
-                    pred_count = 0
-                    high_risk_count = 0
-                    low_risk_count = 0
-                    last_activity = 'N/A'
-                    
-                    try:
-                        if db_ref:
-                            user_predictions_ref = db_ref.child('users').child(user_id).child('predictions')
-                            predictions = user_predictions_ref.get()
-                            
-                            if predictions and isinstance(predictions, dict):
-                                pred_count = len(predictions)
-                                
-                                # Count high/low risk and get latest timestamp
-                                timestamps = []
-                                for pred in predictions.values():
-                                    if isinstance(pred, dict):
-                                        # Count risk levels
-                                        risk_level = pred.get('risk_level', '').lower()
-                                        if risk_level == 'high':
-                                            high_risk_count += 1
-                                        elif risk_level == 'low':
-                                            low_risk_count += 1
-                                        
-                                        # Collect timestamps
-                                        if 'timestamp' in pred:
-                                            timestamps.append(pred['timestamp'])
-                                
-                                # Get most recent activity
-                                if timestamps:
-                                    try:
-                                        last_activity = max(timestamps)
-                                    except:
-                                        last_activity = 'N/A'
-                    except Exception as e:
-                        print(f"⚠️ Error fetching predictions for user {user_id}: {e}")
-                    
-                    patient_info = {
-                        'user_id': user_id,
-                        'full_name': user_data.get('full_name', 'N/A'),
-                        'username': user_data.get('username', 'N/A'),
-                        'email': user_data.get('email', 'N/A'),
-                        'created_at': user_data.get('created_at', 'N/A'),
-                        'total_predictions': pred_count,
-                        'high_risk_count': high_risk_count,
-                        'low_risk_count': low_risk_count,
-                        'last_activity': last_activity,
-                        'role': user_data.get('role', 'user'),
-                        'auth_provider': user_data.get('auth_provider', 'password')
-                    }
-                    patients_list.append(patient_info)
-            except Exception as e:
-                print(f"⚠️ Error querying Firestore users: {e}")
-        
-        # Also check Realtime DB for any legacy users not in Firestore
-        if db_ref:
-            try:
-                users_ref = db_ref.child('users')
-                rtdb_users = users_ref.get()
+                # Get predictions count and risk analysis
+                predictions = user_data.get('predictions', {})
+                pred_count = 0
+                high_risk_count = 0
+                low_risk_count = 0
+                last_activity = 'N/A'
                 
-                if rtdb_users and isinstance(rtdb_users, dict):
-                    # Get list of user IDs already added from Firestore
-                    existing_user_ids = {p['user_id'] for p in patients_list}
+                if predictions and isinstance(predictions, dict):
+                    pred_count = len(predictions)
                     
-                    for user_id, user_data in rtdb_users.items():
-                        if isinstance(user_data, dict) and user_id not in existing_user_ids:
-                            # Skip admin users
-                            if user_data.get('role') == 'admin':
-                                continue
+                    # Count high/low risk and get latest timestamp
+                    timestamps = []
+                    for pred in predictions.values():
+                        if isinstance(pred, dict):
+                            # Count risk levels
+                            risk_level = pred.get('risk_level', '').lower()
+                            if risk_level == 'high':
+                                high_risk_count += 1
+                            elif risk_level == 'low':
+                                low_risk_count += 1
                             
-                            # Get predictions count and risk analysis
-                            predictions = user_data.get('predictions', {})
-                            pred_count = 0
-                            high_risk_count = 0
-                            low_risk_count = 0
+                            # Collect timestamps
+                            if 'timestamp' in pred:
+                                timestamps.append(pred['timestamp'])
+                    
+                    # Get most recent activity
+                    if timestamps:
+                        try:
+                            last_activity = max(timestamps)
+                        except:
                             last_activity = 'N/A'
-                            
-                            if predictions and isinstance(predictions, dict):
-                                pred_count = len(predictions)
-                                
-                                # Count high/low risk and get latest timestamp
-                                timestamps = []
-                                for pred in predictions.values():
-                                    if isinstance(pred, dict):
-                                        # Count risk levels
-                                        risk_level = pred.get('risk_level', '').lower()
-                                        if risk_level == 'high':
-                                            high_risk_count += 1
-                                        elif risk_level == 'low':
-                                            low_risk_count += 1
-                                        
-                                        # Collect timestamps
-                                        if 'timestamp' in pred:
-                                            timestamps.append(pred['timestamp'])
-                                
-                                # Get most recent activity
-                                if timestamps:
-                                    try:
-                                        last_activity = max(timestamps)
-                                    except:
-                                        last_activity = 'N/A'
-                            
-                            patient_info = {
-                                'user_id': user_id,
-                                'full_name': user_data.get('full_name', 'N/A'),
-                                'username': user_data.get('username', 'N/A'),
-                                'email': user_data.get('email', 'N/A'),
-                                'created_at': user_data.get('created_at', 'N/A'),
-                                'total_predictions': pred_count,
-                                'high_risk_count': high_risk_count,
-                                'low_risk_count': low_risk_count,
-                                'last_activity': last_activity,
-                                'role': user_data.get('role', 'user'),
-                                'auth_provider': user_data.get('auth_provider', 'password')
-                            }
-                            patients_list.append(patient_info)
-            except Exception as e:
-                print(f"⚠️ Error querying Realtime DB users: {e}")
+                
+                patient_info = {
+                    'user_id': user_id,
+                    'full_name': user_data.get('full_name', 'N/A'),
+                    'username': user_data.get('username', 'N/A'),
+                    'email': user_data.get('email', 'N/A'),
+                    'created_at': user_data.get('created_at', 'N/A'),
+                    'total_predictions': pred_count,
+                    'high_risk_count': high_risk_count,
+                    'low_risk_count': low_risk_count,
+                    'last_activity': last_activity,
+                    'role': user_data.get('role', 'user')
+                }
+                patients_list.append(patient_info)
         
         return jsonify({
             'success': True,
@@ -1303,32 +1243,14 @@ def get_all_patients():
 def get_patient_predictions(user_id):
     """Get all predictions for a specific patient"""
     try:
-        # Get all predictions for this user from Realtime DB
+        # Get all predictions for this user
         history = get_patient_history(user_id=user_id, limit=1000)
         
-        # Get user info - try Firestore first, then Realtime DB
-        from firebase_config import db, db_ref, initialize_firebase
-        initialize_firebase()
-        
-        user_data = None
-        
-        # Try Firestore first
-        if db:
-            try:
-                users_ref = db.collection('users')
-                user_doc = users_ref.document(user_id).get()
-                if user_doc.exists:
-                    user_data = user_doc.to_dict()
-            except Exception as e:
-                print(f"⚠️ Error fetching user from Firestore: {e}")
-        
-        # Fallback to Realtime DB if not found in Firestore
-        if not user_data and db_ref:
-            try:
-                user_ref = db_ref.child('users').child(user_id)
-                user_data = user_ref.get()
-            except Exception as e:
-                print(f"⚠️ Error fetching user from Realtime DB: {e}")
+        # Get user info
+        import firebase_config
+        firebase_config.initialize_firebase()
+        user_ref = firebase_config.db_ref.child('users').child(user_id)
+        user_data = user_ref.get()
         
         return jsonify({
             'success': True,
@@ -1361,43 +1283,22 @@ def delete_patient(user_id):
                 'error': 'Cannot delete your own admin account'
             }), 400
         
-        from firebase_config import db, db_ref, initialize_firebase
-        initialize_firebase()
+        import firebase_config
+        firebase_config.initialize_firebase()
         
-        # Delete user from Firestore if exists
-        if db:
-            try:
-                users_ref = db.collection('users')
-                user_doc = users_ref.document(user_id)
-                if user_doc.get().exists:
-                    user_doc.delete()
-                    print(f"✅ Deleted user {user_id} from Firestore")
-            except Exception as e:
-                print(f"⚠️ Error deleting user from Firestore: {e}")
+        # Delete user from /users node
+        user_ref = firebase_config.db_ref.child('users').child(user_id)
+        user_ref.delete()
         
-        # Delete user from Realtime DB if exists
-        if db_ref:
-            try:
-                user_ref = db_ref.child('users').child(user_id)
-                user_ref.delete()
-                print(f"✅ Deleted user {user_id} from Realtime DB")
-            except Exception as e:
-                print(f"⚠️ Error deleting user from Realtime DB: {e}")
+        # Delete all predictions by this user from /predictions node
+        predictions_ref = firebase_config.db_ref.child('predictions')
+        all_predictions = predictions_ref.get()
         
-        # Delete all predictions by this user from /predictions node in Realtime DB
-        if db_ref:
-            try:
-                predictions_ref = db_ref.child('predictions')
-                all_predictions = predictions_ref.get()
-                
-                if all_predictions and isinstance(all_predictions, dict):
-                    for pred_id, pred_data in all_predictions.items():
-                        if isinstance(pred_data, dict) and pred_data.get('user_id') == user_id:
-                            # Delete this prediction
-                            predictions_ref.child(pred_id).delete()
-                    print(f"✅ Deleted predictions for user {user_id}")
-            except Exception as e:
-                print(f"⚠️ Error deleting predictions: {e}")
+        if all_predictions and isinstance(all_predictions, dict):
+            for pred_id, pred_data in all_predictions.items():
+                if isinstance(pred_data, dict) and pred_data.get('user_id') == user_id:
+                    # Delete this prediction
+                    predictions_ref.child(pred_id).delete()
         
         return jsonify({
             'success': True,
@@ -1518,35 +1419,49 @@ def predict():
                 'error': 'Invalid medical test values. Please check all inputs.'
             }), 400
         
-        # Make prediction
+        # Add engineered features for MLOps model
         features_array = np.array(features).reshape(1, -1)
+        features_with_eng = add_engineered_features(features_array)
         
         # Scale features if scaler is available
         if scaler is not None:
-            features_array = scaler.transform(features_array)
+            features_scaled = scaler.transform(features_with_eng)
+        else:
+            features_scaled = features_with_eng
         
-        prediction = model.predict(features_array)[0]
+        prediction = model.predict(features_scaled)[0]
         
         # Get prediction probability if available
         try:
-            prediction_proba = model.predict_proba(features_array)[0]
+            prediction_proba = model.predict_proba(features_scaled)[0]
             confidence = float(max(prediction_proba) * 100)
-            probability = float(prediction_proba[1])  # Probability of positive class
+            probability = float(prediction_proba[1])  # Probability of diabetes
         except:
             confidence = 85.0  # Default confidence
-            probability = 0.5
+            probability = 0.85 if prediction == 1 else 0.15
         
-        # Log prediction for monitoring (MLOps)
-        if model_monitor:
-            try:
-                model_monitor.log_prediction(
-                    features=features,
-                    prediction=int(prediction),
-                    probability=probability,
-                    user_id=session.get('user_id', 'anonymous')
-                )
-            except Exception as monitor_error:
-                print(f"⚠️  Monitoring log failed: {monitor_error}")
+        # Log prediction to MLOps monitoring
+        try:
+            user_id = session.get('user_id', 'anonymous')
+            features_dict = {
+                'Pregnancies': features[0],
+                'Glucose': features[1],
+                'BloodPressure': features[2],
+                'SkinThickness': features[3],
+                'Insulin': features[4],
+                'BMI': features[5],
+                'DiabetesPedigreeFunction': features[6],
+                'Age': features[7]
+            }
+            model_monitor.log_prediction(
+                features=features_dict,
+                prediction=int(prediction),
+                probability=probability,
+                user_id=user_id
+            )
+            print(f"✅ MLOps: Prediction logged for monitoring")
+        except Exception as monitor_error:
+            print(f"⚠️ MLOps monitoring error (non-critical): {monitor_error}")
         
         # Interpret result
         if prediction == 1:
