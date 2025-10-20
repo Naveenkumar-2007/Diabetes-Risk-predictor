@@ -68,20 +68,31 @@ def send_password_reset_email(recipient_email, reset_url):
     smtp_host = os.getenv('SMTP_HOST')
     if not smtp_host:
         print(f"⚠️ SMTP_HOST not configured. Password reset link for {recipient_email}: {reset_url}")
-        return False, "Email service not configured"
+        return False, "Email service is not configured. Please contact the administrator."
 
     smtp_port = int(os.getenv('SMTP_PORT', '587'))
     smtp_username = os.getenv('SMTP_USERNAME')
     smtp_password = os.getenv('SMTP_PASSWORD')
     use_tls = os.getenv('SMTP_USE_TLS', 'true').lower() != 'false'
-    sender_email = os.getenv('SMTP_FROM_EMAIL') or smtp_username or 'no-reply@diabetes-predictor.local'
+    
+    # Parse sender email properly
+    sender_email_raw = os.getenv('SMTP_FROM_EMAIL') or smtp_username or 'no-reply@diabetes-predictor.local'
+    # Extract just the email if it's in format "Name <email@example.com>"
+    if '<' in sender_email_raw and '>' in sender_email_raw:
+        sender_email = sender_email_raw.split('<')[1].split('>')[0].strip()
+        sender_name = sender_email_raw.split('<')[0].strip()
+    else:
+        sender_email = sender_email_raw.strip()
+        sender_name = sender_email_raw.strip()
 
     subject = 'Reset your Diabetes Health Predictor password'
     body = (
         "We received a request to reset your Diabetes Health Predictor account password.\n\n"
         f"If you made this request, click the link below within {PASSWORD_RESET_EXPIRY_HOURS} hour(s) to choose a new password:\n\n"
         f"{reset_url}\n\n"
-        "If you did not request a reset, you can safely ignore this email.\n"
+        "If you did not request a reset, you can safely ignore this email.\n\n"
+        "Best regards,\n"
+        "Diabetes Health Predictor Team"
     )
 
     message = MIMEText(body)
@@ -90,16 +101,32 @@ def send_password_reset_email(recipient_email, reset_url):
     message['To'] = recipient_email
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
+        print(f"📧 Attempting to send password reset email to {recipient_email}")
+        print(f"   SMTP Host: {smtp_host}:{smtp_port}")
+        print(f"   From: {sender_email}")
+        
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
+            server.set_debuglevel(1)  # Enable debug output
             if use_tls:
+                print("   Starting TLS...")
                 server.starttls()
             if smtp_username and smtp_password:
+                print(f"   Logging in as: {smtp_username}")
                 server.login(smtp_username, smtp_password)
+            print("   Sending email...")
             server.sendmail(sender_email, [recipient_email], message.as_string())
-        return True, "Password reset email sent"
+        
+        print(f"✅ Password reset email sent successfully to {recipient_email}")
+        return True, "Password reset email sent successfully"
+    except smtplib.SMTPAuthenticationError as exc:
+        print(f"❌ SMTP Authentication failed: {exc}")
+        return False, "Email authentication failed. Please check SMTP credentials."
+    except smtplib.SMTPException as exc:
+        print(f"❌ SMTP error sending password reset email: {exc}")
+        return False, f"Unable to send email: {str(exc)}"
     except Exception as exc:
-        print(f"❌ Error sending password reset email: {exc}")
-        return False, f"Email delivery failed: {exc}"
+        print(f"❌ Unexpected error sending password reset email: {exc}")
+        return False, f"Email delivery failed: {str(exc)}"
 
 def create_user(username, email, password, full_name, contact="", address=""):
     """
