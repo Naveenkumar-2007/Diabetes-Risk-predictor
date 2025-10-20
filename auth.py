@@ -73,7 +73,7 @@ def send_password_reset_email(recipient_email, reset_url):
     smtp_port = int(os.getenv('SMTP_PORT', '587'))
     smtp_username = os.getenv('SMTP_USERNAME')
     smtp_password = os.getenv('SMTP_PASSWORD')
-    use_tls = os.getenv('SMTP_USE_TLS', 'true').lower() != 'false'
+    use_tls = os.getenv('SMTP_USE_TLS', 'true').lower() in ('true', '1', 'yes')
     
     # Parse sender email properly
     sender_email_raw = os.getenv('SMTP_FROM_EMAIL') or smtp_username or 'no-reply@diabetes-predictor.local'
@@ -97,13 +97,14 @@ def send_password_reset_email(recipient_email, reset_url):
 
     message = MIMEText(body)
     message['Subject'] = subject
-    message['From'] = sender_email
+    message['From'] = sender_email_raw  # Use the full format with name
     message['To'] = recipient_email
 
     try:
         print(f"📧 Attempting to send password reset email to {recipient_email}")
         print(f"   SMTP Host: {smtp_host}:{smtp_port}")
-        print(f"   From: {sender_email}")
+        print(f"   From: {sender_email_raw}")
+        print(f"   Login User: {smtp_username}")
         
         with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
             server.set_debuglevel(1)  # Enable debug output
@@ -120,12 +121,16 @@ def send_password_reset_email(recipient_email, reset_url):
         return True, "Password reset email sent successfully"
     except smtplib.SMTPAuthenticationError as exc:
         print(f"❌ SMTP Authentication failed: {exc}")
+        print(f"   Username: {smtp_username}")
+        print(f"   Password length: {len(smtp_password) if smtp_password else 0}")
         return False, "Email authentication failed. Please check SMTP credentials."
     except smtplib.SMTPException as exc:
         print(f"❌ SMTP error sending password reset email: {exc}")
         return False, f"Unable to send email: {str(exc)}"
     except Exception as exc:
         print(f"❌ Unexpected error sending password reset email: {exc}")
+        import traceback
+        traceback.print_exc()
         return False, f"Email delivery failed: {str(exc)}"
 
 def create_user(username, email, password, full_name, contact="", address=""):
