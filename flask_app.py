@@ -37,6 +37,15 @@ from auth import (
     get_user_predictions, get_user_statistics, change_password, update_user_profile
 )
 
+# Import MLOps monitoring
+try:
+    from mlops.model_monitor import ModelMonitor
+    model_monitor = ModelMonitor()
+    print("✅ Model monitoring enabled")
+except Exception as e:
+    print(f"⚠️  Model monitoring not available: {e}")
+    model_monitor = None
+
 # ------------------- FLASK APP SETUP -------------------
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'diabetes-predictor-secret-key-2025-change-in-production'
@@ -1522,8 +1531,22 @@ def predict():
         try:
             prediction_proba = model.predict_proba(features_array)[0]
             confidence = float(max(prediction_proba) * 100)
+            probability = float(prediction_proba[1])  # Probability of positive class
         except:
             confidence = 85.0  # Default confidence
+            probability = 0.5
+        
+        # Log prediction for monitoring (MLOps)
+        if model_monitor:
+            try:
+                model_monitor.log_prediction(
+                    features=features,
+                    prediction=int(prediction),
+                    probability=probability,
+                    user_id=session.get('user_id', 'anonymous')
+                )
+            except Exception as monitor_error:
+                print(f"⚠️  Monitoring log failed: {monitor_error}")
         
         # Interpret result
         if prediction == 1:

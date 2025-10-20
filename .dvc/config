@@ -1,0 +1,13 @@
+# DVC Configuration for Data and Model Versioning
+
+[core]
+    remote = storage
+    autostage = true
+
+[remote "storage"]
+    url = gdrive://1a2b3c4d5e6f7g8h9i0j  # Replace with your Google Drive folder ID
+    # Alternative: url = s3://mybucket/dvc-storage
+    # Alternative: url = gs://mybucket/dvc-storage
+    
+['remote "storage"']
+    gdrive_acknowledge_abuse = true

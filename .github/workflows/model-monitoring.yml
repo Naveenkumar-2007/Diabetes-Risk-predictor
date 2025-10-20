@@ -1,0 +1,71 @@
+name: Model Monitoring & Drift Detection
+
+on:
+  # Run daily to check for drift
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM daily
+  
+  # Manual trigger
+  workflow_dispatch:
+
+jobs:
+  drift-detection:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy scipy scikit-learn
+        
+    - name: Run drift detection
+      id: drift_check
+      run: |
+        python mlops/model_monitor.py > drift_report.txt
+        cat drift_report.txt
+        
+    - name: Check for retraining trigger
+      id: retrain_check
+      run: |
+        python -c "
+        from mlops.model_monitor import ModelMonitor
+        monitor = ModelMonitor()
+        should_retrain, reason = monitor.should_trigger_retraining()
+        print(f'should_retrain={should_retrain}')
+        print(f'Reason: {reason}')
+        " | tee retrain_check.txt
+        
+        # Extract result
+        if grep -q "should_retrain=True" retrain_check.txt; then
+          echo "RETRAIN_NEEDED=true" >> $GITHUB_OUTPUT
+        else
+          echo "RETRAIN_NEEDED=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Trigger retraining workflow
+      if: steps.retrain_check.outputs.RETRAIN_NEEDED == 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'mlops-pipeline.yml',
+            ref: 'main'
+          })
+          
+    - name: Upload drift report
+      uses: actions/upload-artifact@v3
+      with:
+        name: drift-report
+        path: |
+          drift_report.txt
+          logs/predictions/drift_alerts.jsonl

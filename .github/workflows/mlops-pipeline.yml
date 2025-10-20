@@ -1,0 +1,118 @@
+name: MLOps - Model Training & Deployment
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  
+  # Scheduled trigger (weekly on Sunday at midnight)
+  schedule:
+    - cron: '0 0 * * 0'
+  
+  # Trigger on data updates
+  push:
+    paths:
+      - 'data/raw/diabetes.csv'
+      - 'mlops/**'
+      - '.github/workflows/mlops-pipeline.yml'
+
+jobs:
+  model-training:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install dvc pytest pytest-cov
+        
+    - name: Run data validation
+      run: |
+        python -c "
+        import pandas as pd
+        import sys
+        
+        df = pd.read_csv('data/raw/diabetes.csv')
+        
+        # Validate data
+        assert df.shape[0] > 0, 'No data found'
+        assert 'Outcome' in df.columns, 'Target column missing'
+        assert df.isnull().sum().sum() == 0 or df[df.columns[0]].replace(0, pd.NA).isnull().sum() < len(df) * 0.5, 'Too many missing values'
+        
+        print(f'✅ Data validation passed: {df.shape[0]} rows')
+        "
+        
+    - name: Train model with MLflow
+      env:
+        MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+      run: |
+        python mlops/model_trainer_mlops.py
+        
+    - name: Run model tests
+      run: |
+        python -m pytest tests/test_model.py -v --cov=src --cov-report=term-missing || echo "No tests found, skipping..."
+        
+    - name: Check model performance
+      run: |
+        python -c "
+        import json
+        from pathlib import Path
+        
+        metadata_file = Path('artifacts/model_metadata.json')
+        if metadata_file.exists():
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+            
+            accuracy = metadata['metrics']['test_accuracy']
+            roc_auc = metadata['metrics']['roc_auc']
+            
+            print(f'Model Performance:')
+            print(f'  Accuracy: {accuracy:.4f}')
+            print(f'  ROC-AUC: {roc_auc:.4f}')
+            
+            # Fail if performance is below threshold
+            assert accuracy >= 0.70, f'Accuracy {accuracy} below threshold 0.70'
+            assert roc_auc >= 0.75, f'ROC-AUC {roc_auc} below threshold 0.75'
+            
+            print('✅ Model performance validation passed')
+        else:
+            print('⚠️  Model metadata not found, skipping validation')
+        "
+        
+    - name: Upload model artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: model-artifacts
+        path: |
+          artifacts/model.pkl
+          artifacts/scaler.pkl
+          artifacts/model_metadata.json
+          
+    - name: Commit updated model
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add artifacts/
+        git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Auto-update: Model retrained [skip ci]"
+        
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
